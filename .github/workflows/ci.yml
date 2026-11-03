@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.47.0'
+
+jobs:
+  analyze-and-test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+      - run: flutter analyze
+      - run: flutter test
+
+  build-android:
+    name: Build Android
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build example APK
+        working-directory: example
+        run: flutter build apk --debug
+
+  # iOS and macOS are built twice, once with Swift Package Manager and once
+  # with CocoaPods, because users' apps may use either.
+  build-darwin:
+    name: Build ${{ matrix.platform }} (${{ matrix.deps }})
+    needs: analyze-and-test
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ios, macos]
+        deps: [spm, cocoapods]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Use Swift Package Manager
+        if: matrix.deps == 'spm'
+        run: flutter config --enable-swift-package-manager
+      - name: Use CocoaPods
+        if: matrix.deps == 'cocoapods'
+        run: flutter config --no-enable-swift-package-manager
+      - name: Build example for iOS
+        if: matrix.platform == 'ios'
+        working-directory: example
+        run: flutter build ios --debug --no-codesign
+      - name: Build example for macOS
+        if: matrix.platform == 'macos'
+        working-directory: example
+        run: flutter build macos --debug
+
+  build-windows:
+    name: Build Windows
+    needs: analyze-and-test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Build example
+        working-directory: example
+        run: flutter build windows --debug
