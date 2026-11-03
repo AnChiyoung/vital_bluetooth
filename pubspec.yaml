@@ -1,7 +1,8 @@
 name: vital_bluetooth
 description: "Reliable Bluetooth LE and Classic plugin for wearables and healthcare devices, with queued GATT operations, auto-reconnect and multi-device support."
 version: 0.0.1
-homepage:
+repository: https://github.com/AnChiyoung/vital_bluetooth
+issue_tracker: https://github.com/AnChiyoung/vital_bluetooth/issues
 
 environment:
   sdk: ^3.13.0
