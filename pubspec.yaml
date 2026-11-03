@@ -41,8 +41,10 @@ flutter:
         pluginClass: VitalBluetoothPlugin
       ios:
         pluginClass: VitalBluetoothPlugin
+        sharedDarwinSource: true
       macos:
         pluginClass: VitalBluetoothPlugin
+        sharedDarwinSource: true
       windows:
         pluginClass: VitalBluetoothPluginCApi
 
