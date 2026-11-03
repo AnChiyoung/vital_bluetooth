@@ -12,7 +12,8 @@ class MockVitalBluetoothPlatform
 }
 
 void main() {
-  final VitalBluetoothPlatform initialPlatform = VitalBluetoothPlatform.instance;
+  final VitalBluetoothPlatform initialPlatform =
+      VitalBluetoothPlatform.instance;
 
   test('$MethodChannelVitalBluetooth is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelVitalBluetooth>());
