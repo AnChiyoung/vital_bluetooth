@@ -39,6 +39,7 @@ class BluetoothDevice {
     _mtuSubscription = _events.mtuChanged
         .where((e) => e.deviceId == id)
         .listen((e) => _mtu.value = e.mtu);
+    unawaited(_restore());
   }
 
   /// MAC address on Android and Windows, a UUID on iOS and macOS. The
@@ -56,6 +57,10 @@ class BluetoothDevice {
   final _mtu = ValueNotifier<int>(23);
   final _services = ValueNotifier<List<BluetoothService>>(const []);
   final _subscribed = <BluetoothCharacteristic>{};
+
+  /// Notifications the platform kept on while no Dart code ran, matched to
+  /// characteristics once services are known.
+  List<CharacteristicAddressMessage>? _restoredSubscriptions;
   bool _disposed = false;
 
   /// The connection state. Use it with ValueListenableBuilder, or wrap it
@@ -194,6 +199,13 @@ class BluetoothDevice {
           .map((s) => BluetoothService._from(this, s))
           .toList(growable: false);
       _services.value = next;
+      final restored = _restoredSubscriptions;
+      _restoredSubscriptions = null;
+      for (final address
+          in restored ?? const <CharacteristicAddressMessage>[]) {
+        final match = _findAddress(next, address);
+        if (match != null) _subscribed.add(match);
+      }
       if (_subscribed.isNotEmpty) _restoreNotifications(next);
     } else if (_connection.value.status ==
         DeviceConnectionStatus.disconnected) {
@@ -219,16 +231,54 @@ class BluetoothDevice {
     }
   }
 
+  /// Picks up a link the platform kept alive in background mode, if any.
+  /// Asking also tells the platform that Dart now handles this device's
+  /// values, so they stop going to the background buffer.
+  Future<void> _restore() async {
+    final SessionMessage? session;
+    try {
+      session = await _api.getSession(id);
+    } catch (_) {
+      return; // Nothing to restore on this platform.
+    }
+    if (session == null || _disposed) return;
+    _restoredSubscriptions = session.subscribed;
+    _connection.resume(connected: session.connected);
+  }
+
   static BluetoothCharacteristic? _find(
     List<BluetoothService> services,
     BluetoothCharacteristic old,
+  ) => _match(
+    services,
+    old.serviceUuid,
+    old.serviceInstance,
+    old.uuid,
+    old.instance,
+  );
+
+  static BluetoothCharacteristic? _findAddress(
+    List<BluetoothService> services,
+    CharacteristicAddressMessage a,
+  ) => _match(
+    services,
+    a.serviceUuid.toLowerCase(),
+    a.serviceInstance,
+    a.characteristicUuid.toLowerCase(),
+    a.characteristicInstance,
+  );
+
+  static BluetoothCharacteristic? _match(
+    List<BluetoothService> services,
+    String serviceUuid,
+    int serviceInstance,
+    String uuid,
+    int instance,
   ) {
     for (final s in services) {
-      if (s.uuid != old.serviceUuid || s.instance != old.serviceInstance) {
-        continue;
-      }
+      if (s.uuid != serviceUuid || s.instance != serviceInstance) continue;
       for (final c in s.characteristics) {
-        if (c.uuid == old.uuid && c.instance == old.instance) return c;
+        if (c.uuid == uuid && c.instance == instance) return c;
       }
     }
     return null;

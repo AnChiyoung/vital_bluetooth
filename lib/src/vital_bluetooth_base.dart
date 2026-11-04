@@ -48,6 +48,31 @@ class ScanResult {
   String toString() => 'ScanResult(${device.id}, $name, rssi: $rssi)';
 }
 
+/// A notification value that arrived in background mode while no Dart code
+/// was handling its device. See [VitalBluetooth.takeBackgroundValues].
+@immutable
+class BackgroundValue {
+  const BackgroundValue({
+    required this.deviceId,
+    required this.serviceUuid,
+    required this.characteristicUuid,
+    required this.value,
+    required this.timestamp,
+  });
+
+  final String deviceId;
+  final String serviceUuid;
+  final String characteristicUuid;
+  final Uint8List value;
+
+  /// When the platform received it.
+  final DateTime timestamp;
+
+  @override
+  String toString() =>
+      'BackgroundValue($deviceId, $characteristicUuid, $value, $timestamp)';
+}
+
 /// Entry point of vital_bluetooth.
 ///
 /// There is one instance per app: `VitalBluetooth()` always returns it.
@@ -227,21 +252,27 @@ class VitalBluetooth {
 
   // --- Devices ---
 
+  /// The options for devices created without explicit ones, including the
+  /// ones made for scan results. Set it before scanning; devices that
+  /// already exist keep theirs.
+  ConnectionOptions defaultOptions = const ConnectionOptions();
+
   /// The device with [id]. The same object comes back for the same ID until
   /// it is disposed.
   ///
-  /// [options] and [autoConnect] only apply when the object is created.
-  /// [autoConnect] is Android only: the system connects whenever the device
-  /// comes in range instead of giving up after about 30 seconds.
+  /// [options] and [autoConnect] only apply when the object is created;
+  /// without [options] it uses [defaultOptions]. [autoConnect] is Android
+  /// only: the system connects whenever the device comes in range instead
+  /// of giving up after about 30 seconds.
   BluetoothDevice device(
     String id, {
-    ConnectionOptions options = const ConnectionOptions(),
+    ConnectionOptions? options,
     bool autoConnect = false,
   }) => _devices[id] ??= BluetoothDevice.internal(
     id,
     _api,
     _events,
-    options: options,
+    options: options ?? defaultOptions,
     autoConnect: autoConnect,
     onDispose: (d) {
       if (identical(_devices[d.id], d)) _devices.remove(d.id);
@@ -259,6 +290,86 @@ class VitalBluetooth {
       ),
     );
     return [for (final d in found) device(d.deviceId)];
+  }
+
+  // --- Background mode ---
+
+  /// Keeps connections alive while the app is in the background, the screen
+  /// is off, or the app's screen has been closed. Android only for now.
+  ///
+  /// Android shows an ongoing notification with [title] and [text] while it
+  /// is on (the system requires it), and asks for the notification
+  /// permission on Android 13+ the first time. From then on:
+  ///
+  /// * The app process is kept alive, so the link isn't dropped when the
+  ///   app sits in the background.
+  /// * Links outlive the app's screen. Closing it (back button, swiping it
+  ///   away from recents) no longer disconnects.
+  /// * While no screen is open, a dropped link is reconnected in native
+  ///   code and notifications are turned back on, with no time limit.
+  /// * Values that arrive while no Dart code handles the device are kept
+  ///   (up to 10,000) for [takeBackgroundValues].
+  ///
+  /// When the app opens again, [restoreDevices] (or [device] with the same
+  /// ID) picks the links back up. Pair it with
+  /// `ReconnectPolicy.unlimited()` so the app keeps reconnecting while it
+  /// is open too.
+  ///
+  /// Call it while the app is in the foreground; Android 12+ refuses it
+  /// from the background. Needs the Bluetooth permissions first.
+  Future<void> enableBackgroundMode({
+    required String title,
+    required String text,
+  }) => guardPlatformCall(
+    () => _api.enableBackgroundMode(
+      BackgroundNotificationMessage(title: title, text: text),
+    ),
+  );
+
+  /// Stops background mode and removes the notification. Connections stay
+  /// up while the app runs, but closing the app closes them again.
+  Future<void> disableBackgroundMode() =>
+      guardPlatformCall(() async => _api.disableBackgroundMode());
+
+  Future<bool> isBackgroundModeEnabled() =>
+      guardPlatformCall(() async => _api.isBackgroundModeEnabled());
+
+  /// The devices the platform kept connected (or is reconnecting) while the
+  /// app's screen was closed in background mode, picked back up.
+  ///
+  /// Call it when the app starts. Each device becomes ready again with its
+  /// notifications still on. [options] and [autoConnect] apply as in
+  /// [device].
+  Future<List<BluetoothDevice>> restoreDevices({
+    ConnectionOptions? options,
+    bool autoConnect = false,
+  }) async {
+    final sessions = await guardPlatformCall(() async => _api.getSessions());
+    return [
+      for (final s in sessions)
+        device(s.deviceId, options: options, autoConnect: autoConnect),
+    ];
+  }
+
+  /// Notification values received in background mode while no Dart code
+  /// was handling their device, oldest first. Each value is returned once.
+  ///
+  /// Call it after [restoreDevices] to store what arrived while the app was
+  /// closed. The buffer keeps the latest 10,000 values.
+  Future<List<BackgroundValue>> takeBackgroundValues() async {
+    final values = await guardPlatformCall(
+      () async => _api.takeBufferedValues(),
+    );
+    return [
+      for (final v in values)
+        BackgroundValue(
+          deviceId: v.characteristic.deviceId,
+          serviceUuid: v.characteristic.serviceUuid.toLowerCase(),
+          characteristicUuid: v.characteristic.characteristicUuid.toLowerCase(),
+          value: v.value,
+          timestamp: DateTime.fromMicrosecondsSinceEpoch(v.timestampMicros),
+        ),
+    ];
   }
 
   /// Releases everything. Only for tests; the shared instance lives as long

@@ -28,6 +28,9 @@ class FakeBleHostApi extends BleHostApi {
   final calls = <String>[];
   AdapterStateMessage adapter = AdapterStateMessage.poweredOn;
   PlatformException? startScanError;
+  final sessions = <String, SessionMessage>{};
+  final buffered = <CharacteristicValueMessage>[];
+  BackgroundNotificationMessage? background;
 
   @override
   Future<CapabilitiesMessage> getCapabilities() async => CapabilitiesMessage(
@@ -106,6 +109,22 @@ class FakeBleHostApi extends BleHostApi {
 
   @override
   Future<int> requestMtu(String deviceId, int mtu) async => 185;
+
+  @override
+  Future<void> enableBackgroundMode(
+    BackgroundNotificationMessage notification,
+  ) async => background = notification;
+
+  @override
+  Future<SessionMessage?> getSession(String deviceId) async =>
+      sessions[deviceId];
+
+  @override
+  Future<List<SessionMessage>> getSessions() async => sessions.values.toList();
+
+  @override
+  Future<List<CharacteristicValueMessage>> takeBufferedValues() async =>
+      List.of(buffered);
 }
 
 ScanResultMessage scanResult(String id, {String? name}) => ScanResultMessage(
@@ -366,6 +385,107 @@ void main() {
 
       expect(api.calls.last, 'disconnect AA');
       expect(identical(bluetooth.device('AA'), device), isFalse);
+    });
+  });
+
+  group('background mode', () {
+    CharacteristicAddressMessage heartRateAddress(String deviceId) =>
+        CharacteristicAddressMessage(
+          deviceId: deviceId,
+          serviceUuid: heartRateService,
+          serviceInstance: 0,
+          characteristicUuid: heartRateMeasurement,
+          characteristicInstance: 0,
+        );
+
+    test('enableBackgroundMode sends the notification text', () async {
+      await bluetooth.enableBackgroundMode(title: 'HR', text: 'Connected');
+
+      expect(api.background?.title, 'HR');
+      expect(api.background?.text, 'Connected');
+    });
+
+    test('a link the platform kept becomes ready with notifications on', () {
+      fakeAsync((async) {
+        api.sessions['AA'] = SessionMessage(
+          deviceId: 'AA',
+          connected: true,
+          subscribed: [heartRateAddress('AA')],
+        );
+
+        final device = bluetooth.device('AA');
+        async.flushMicrotasks();
+
+        expect(device.isReady, isTrue);
+        expect(api.calls, ['connect AA', 'notify 2a37 true']);
+        expect(device.characteristic('180d', '2a37')!.isNotifying, isTrue);
+      });
+    });
+
+    test('a link the platform was still restoring is reconnected', () {
+      fakeAsync((async) {
+        api.sessions['AA'] = SessionMessage(
+          deviceId: 'AA',
+          connected: false,
+          subscribed: [],
+        );
+
+        final device = bluetooth.device('AA');
+        async.flushMicrotasks();
+        expect(
+          device.connectionState.value.status,
+          DeviceConnectionStatus.reconnecting,
+        );
+
+        async.elapse(const Duration(seconds: 1));
+        expect(device.isReady, isTrue);
+      });
+    });
+
+    test('without a kept link nothing happens', () {
+      fakeAsync((async) {
+        final device = bluetooth.device('AA');
+        async.flushMicrotasks();
+
+        expect(api.calls, isEmpty);
+        expect(
+          device.connectionState.value.status,
+          DeviceConnectionStatus.disconnected,
+        );
+      });
+    });
+
+    test('restoreDevices returns the kept devices', () async {
+      api.sessions['AA'] = SessionMessage(
+        deviceId: 'AA',
+        connected: true,
+        subscribed: [],
+      );
+
+      final devices = await bluetooth.restoreDevices();
+
+      expect(devices.single.id, 'AA');
+      expect(identical(devices.single, bluetooth.device('AA')), isTrue);
+    });
+
+    test('takeBackgroundValues converts values and times', () async {
+      api.buffered.add(
+        CharacteristicValueMessage(
+          characteristic: heartRateAddress('AA'),
+          value: Uint8List.fromList([0, 72]),
+          timestampMicros: 1700000000000000,
+        ),
+      );
+
+      final values = await bluetooth.takeBackgroundValues();
+
+      expect(values.single.deviceId, 'AA');
+      expect(values.single.characteristicUuid, heartRateMeasurement);
+      expect(values.single.value, [0, 72]);
+      expect(
+        values.single.timestamp,
+        DateTime.fromMicrosecondsSinceEpoch(1700000000000000),
+      );
     });
   });
 }

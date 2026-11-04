@@ -126,6 +126,29 @@ class DeviceConnection {
     _emit(DeviceConnectionState.disconnected);
   }
 
+  /// Takes over a link the platform kept alive, for example after the app's
+  /// UI was closed in background mode and opened again.
+  ///
+  /// When the platform reports the link as [connected], services are
+  /// discovered and the state becomes ready. Otherwise the link is restored
+  /// according to the [ReconnectPolicy], or released if the policy never
+  /// reconnects. Does nothing unless the state is disconnected and idle.
+  void resume({required bool connected}) {
+    if (_disposed ||
+        _pendingConnect != null ||
+        value.status != DeviceConnectionStatus.disconnected) {
+      return;
+    }
+    if (connected) {
+      // Failures show up in the state; nobody awaits this call.
+      unawaited(connect().catchError((Object _) {}));
+    } else if (options.reconnect.delayFor(1) == null) {
+      unawaited(_releaseQuietly());
+    } else {
+      unawaited(_reconnectFlow(DeviceDisconnectedException(deviceId)));
+    }
+  }
+
   /// Runs [task] through the operation queue once the device is ready.
   ///
   /// Fails at once with a [DeviceDisconnectedException] when it is not.

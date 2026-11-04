@@ -37,4 +37,5 @@ export 'src/models.dart'
         Phy,
         ScanMode;
 export 'src/uuid.dart';
-export 'src/vital_bluetooth_base.dart' show ScanResult, VitalBluetooth;
+export 'src/vital_bluetooth_base.dart'
+    show BackgroundValue, ScanResult, VitalBluetooth;
