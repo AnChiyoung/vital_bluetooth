@@ -62,7 +62,7 @@ class FakeBleHostApi extends BleHostApi {
       calls.add('connect $deviceId');
 
   @override
-  Future<void> disconnect(String deviceId) async =>
+  Future<void> disconnect(String deviceId, bool forget) async =>
       calls.add('disconnect $deviceId');
 
   @override
@@ -199,6 +199,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(results.map((r) => r.device.id), ['AA', 'BB']);
       expect(results.first.name, 'Band');
+      expect(results.first.device.name.value, 'Band');
+      expect(results.last.device.name.value, isNull);
 
       await subscription.cancel();
       expect(api.calls.last, 'stopScan');
@@ -409,6 +411,7 @@ void main() {
       fakeAsync((async) {
         api.sessions['AA'] = SessionMessage(
           deviceId: 'AA',
+          name: 'Band',
           connected: true,
           subscribed: [heartRateAddress('AA')],
         );
@@ -419,6 +422,7 @@ void main() {
         expect(device.isReady, isTrue);
         expect(api.calls, ['connect AA', 'notify 2a37 true']);
         expect(device.characteristic('180d', '2a37')!.isNotifying, isTrue);
+        expect(device.name.value, 'Band');
       });
     });
 

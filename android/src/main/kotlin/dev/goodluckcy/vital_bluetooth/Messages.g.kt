@@ -939,6 +939,8 @@ data class BackgroundNotificationMessage (
  */
 data class SessionMessage (
   val deviceId: String,
+  /** The name the system remembers for the device, if any. */
+  val name: String? = null,
   /** False while the platform is still reconnecting. */
   val connected: Boolean,
   /** Characteristics with notifications on. */
@@ -948,14 +950,16 @@ data class SessionMessage (
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): SessionMessage {
       val deviceId = pigeonVar_list[0] as String
-      val connected = pigeonVar_list[1] as Boolean
-      val subscribed = pigeonVar_list[2] as List<CharacteristicAddressMessage>
-      return SessionMessage(deviceId, connected, subscribed)
+      val name = pigeonVar_list[1] as String?
+      val connected = pigeonVar_list[2] as Boolean
+      val subscribed = pigeonVar_list[3] as List<CharacteristicAddressMessage>
+      return SessionMessage(deviceId, name, connected, subscribed)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       deviceId,
+      name,
       connected,
       subscribed,
     )
@@ -968,18 +972,19 @@ data class SessionMessage (
       return true
     }
     val other = other as SessionMessage
-    return MessagesPigeonUtils.deepEquals(this.deviceId, other.deviceId) && MessagesPigeonUtils.deepEquals(this.connected, other.connected) && MessagesPigeonUtils.deepEquals(this.subscribed, other.subscribed)
+    return MessagesPigeonUtils.deepEquals(this.deviceId, other.deviceId) && MessagesPigeonUtils.deepEquals(this.name, other.name) && MessagesPigeonUtils.deepEquals(this.connected, other.connected) && MessagesPigeonUtils.deepEquals(this.subscribed, other.subscribed)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + MessagesPigeonUtils.deepHash(this.deviceId)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.name)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.connected)
     result = 31 * result + MessagesPigeonUtils.deepHash(this.subscribed)
     return result
   }
   override fun toString(): String {
-    return "SessionMessage(deviceId=$deviceId, connected=$connected, subscribed=$subscribed)"
+    return "SessionMessage(deviceId=$deviceId, name=$name, connected=$connected, subscribed=$subscribed)"
   }
 }
 
@@ -1261,8 +1266,14 @@ interface BleHostApi {
   suspend fun getSystemDevices(serviceUuids: List<String>): List<SystemDeviceMessage>
   /** Completes when the link is up. Discovery is a separate call. */
   suspend fun connect(deviceId: String, autoConnect: Boolean)
-  /** Completes when the link is down. Never throws notConnected. */
-  suspend fun disconnect(deviceId: String)
+  /**
+   * Completes when the link is down. Never throws notConnected.
+   *
+   * [forget] is true when the app is done with the device. False only
+   * cleans up a failed attempt between reconnect tries: background mode
+   * then still restores the link if the engine goes away.
+   */
+  suspend fun disconnect(deviceId: String, forget: Boolean)
   suspend fun discoverServices(deviceId: String): List<ServiceMessage>
   suspend fun readCharacteristic(characteristic: CharacteristicAddressMessage): ByteArray
   suspend fun writeCharacteristic(characteristic: CharacteristicAddressMessage, value: ByteArray, withResponse: Boolean)
@@ -1480,9 +1491,10 @@ interface BleHostApi {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val deviceIdArg = args[0] as String
+            val forgetArg = args[1] as Boolean
             CoroutineScope(Dispatchers.Main).launch {
               val wrapped: List<Any?> = try {
-                api.disconnect(deviceIdArg)
+                api.disconnect(deviceIdArg, forgetArg)
                 listOf(null)
               } catch (exception: Throwable) {
                 MessagesPigeonUtils.wrapError(exception)

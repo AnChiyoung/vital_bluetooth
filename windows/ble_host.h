@@ -39,7 +39,7 @@ class BleHost : public BleHostApi {
       const std::string& device_id, bool auto_connect,
       std::function<void(std::optional<FlutterError> reply)> result) override;
   void Disconnect(
-      const std::string& device_id,
+      const std::string& device_id, bool forget,
       std::function<void(std::optional<FlutterError> reply)> result) override;
   void DiscoverServices(
       const std::string& device_id,

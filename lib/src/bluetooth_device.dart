@@ -55,6 +55,7 @@ class BluetoothDevice {
   late final DeviceConnection _connection;
   late final StreamSubscription<MtuEvent> _mtuSubscription;
   final _mtu = ValueNotifier<int>(23);
+  final _name = ValueNotifier<String?>(null);
   final _services = ValueNotifier<List<BluetoothService>>(const []);
   final _subscribed = <BluetoothCharacteristic>{};
 
@@ -73,6 +74,11 @@ class BluetoothDevice {
       _connection.stateStream;
 
   bool get isReady => _connection.value.isReady;
+
+  /// The device's name: the latest one seen while scanning, or the one the
+  /// system remembers for a link restored in background mode. Null until
+  /// one of them is known.
+  ValueListenable<String?> get name => _name;
 
   /// The services found when the device last became ready.
   ValueListenable<List<BluetoothService>> get services => _services;
@@ -180,6 +186,7 @@ class BluetoothDevice {
     await _connection.dispose();
     unawaited(_mtuSubscription.cancel());
     _mtu.dispose();
+    _name.dispose();
     _services.dispose();
   }
 
@@ -242,6 +249,7 @@ class BluetoothDevice {
       return; // Nothing to restore on this platform.
     }
     if (session == null || _disposed) return;
+    setDeviceName(this, session.name);
     _restoredSubscriptions = session.subscribed;
     _connection.resume(connected: session.connected);
   }
@@ -460,4 +468,11 @@ class BluetoothCharacteristic {
 
   @override
   String toString() => 'BluetoothCharacteristic($uuid)';
+}
+
+/// Records a name seen for [device]. Empty names are ignored, so a later
+/// advertisement without a name keeps the known one. Not exported.
+void setDeviceName(BluetoothDevice device, String? name) {
+  if (name == null || name.isEmpty || device._disposed) return;
+  device._name.value = name;
 }

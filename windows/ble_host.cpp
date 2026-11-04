@@ -60,7 +60,7 @@ void BleHost::Connect(
 }
 
 void BleHost::Disconnect(
-    const std::string& device_id,
+    const std::string& device_id, bool forget,
     std::function<void(std::optional<FlutterError> reply)> result) {
   result(NotImplemented());
 }

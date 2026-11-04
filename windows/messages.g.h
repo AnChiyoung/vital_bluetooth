@@ -697,14 +697,26 @@ class BackgroundNotificationMessage {
 // Generated class from Pigeon that represents data sent in messages.
 class SessionMessage {
  public:
-  // Constructs an object setting all fields.
+  // Constructs an object setting all non-nullable fields.
   explicit SessionMessage(
     const std::string& device_id,
     bool connected,
     const ::flutter::EncodableList& subscribed);
 
+  // Constructs an object setting all fields.
+  explicit SessionMessage(
+    const std::string& device_id,
+    const std::string* name,
+    bool connected,
+    const ::flutter::EncodableList& subscribed);
+
   const std::string& device_id() const;
   void set_device_id(std::string_view value_arg);
+
+  // The name the system remembers for the device, if any.
+  const std::string* name() const;
+  void set_name(const std::string_view* value_arg);
+  void set_name(std::string_view value_arg);
 
   // False while the platform is still reconnecting.
   bool connected() const;
@@ -729,6 +741,7 @@ class SessionMessage {
   friend class ClassicFlutterApi;
   friend class PigeonInternalCodecSerializer;
   std::string device_id_;
+  std::optional<std::string> name_;
   bool connected_;
   ::flutter::EncodableList subscribed_;
 };
@@ -838,8 +851,13 @@ class BleHostApi {
     bool auto_connect,
     std::function<void(std::optional<FlutterError> reply)> result) = 0;
   // Completes when the link is down. Never throws notConnected.
+  //
+  // [forget] is true when the app is done with the device. False only
+  // cleans up a failed attempt between reconnect tries: background mode
+  // then still restores the link if the engine goes away.
   virtual void Disconnect(
     const std::string& device_id,
+    bool forget,
     std::function<void(std::optional<FlutterError> reply)> result) = 0;
   virtual void DiscoverServices(
     const std::string& device_id,

@@ -877,6 +877,8 @@ struct BackgroundNotificationMessage: Hashable, CustomStringConvertible {
 /// Generated class from Pigeon that represents data sent in messages.
 struct SessionMessage: Hashable, CustomStringConvertible {
   var deviceId: String
+  /// The name the system remembers for the device, if any.
+  var name: String? = nil
   /// False while the platform is still reconnecting.
   var connected: Bool
   /// Characteristics with notifications on.
@@ -886,11 +888,13 @@ struct SessionMessage: Hashable, CustomStringConvertible {
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> SessionMessage? {
     let deviceId = pigeonVar_list[0] as! String
-    let connected = pigeonVar_list[1] as! Bool
-    let subscribed = pigeonVar_list[2] as! [CharacteristicAddressMessage]
+    let name: String? = nilOrValue(pigeonVar_list[1])
+    let connected = pigeonVar_list[2] as! Bool
+    let subscribed = pigeonVar_list[3] as! [CharacteristicAddressMessage]
 
     return SessionMessage(
       deviceId: deviceId,
+      name: name,
       connected: connected,
       subscribed: subscribed
     )
@@ -898,6 +902,7 @@ struct SessionMessage: Hashable, CustomStringConvertible {
   func toList() -> [Any?] {
     return [
       deviceId,
+      name,
       connected,
       subscribed,
     ]
@@ -906,18 +911,19 @@ struct SessionMessage: Hashable, CustomStringConvertible {
     if Swift.type(of: lhs) != Swift.type(of: rhs) {
       return false
     }
-    return MessagesPigeonInternal.deepEquals(lhs.deviceId, rhs.deviceId) && MessagesPigeonInternal.deepEquals(lhs.connected, rhs.connected) && MessagesPigeonInternal.deepEquals(lhs.subscribed, rhs.subscribed)
+    return MessagesPigeonInternal.deepEquals(lhs.deviceId, rhs.deviceId) && MessagesPigeonInternal.deepEquals(lhs.name, rhs.name) && MessagesPigeonInternal.deepEquals(lhs.connected, rhs.connected) && MessagesPigeonInternal.deepEquals(lhs.subscribed, rhs.subscribed)
   }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine("SessionMessage")
     MessagesPigeonInternal.deepHash(value: deviceId, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: name, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: connected, hasher: &hasher)
     MessagesPigeonInternal.deepHash(value: subscribed, hasher: &hasher)
   }
 
   public var description: String {
-    return "SessionMessage(deviceId: \(String(describing: deviceId)), connected: \(String(describing: connected)), subscribed: \(String(describing: subscribed)))"
+    return "SessionMessage(deviceId: \(String(describing: deviceId)), name: \(String(describing: name)), connected: \(String(describing: connected)), subscribed: \(String(describing: subscribed)))"
   }
 }
 
@@ -1161,7 +1167,11 @@ protocol BleHostApi {
   /// Completes when the link is up. Discovery is a separate call.
   func connect(deviceId: String, autoConnect: Bool) async throws
   /// Completes when the link is down. Never throws notConnected.
-  func disconnect(deviceId: String) async throws
+  ///
+  /// [forget] is true when the app is done with the device. False only
+  /// cleans up a failed attempt between reconnect tries: background mode
+  /// then still restores the link if the engine goes away.
+  func disconnect(deviceId: String, forget: Bool) async throws
   func discoverServices(deviceId: String) async throws -> [ServiceMessage]
   func readCharacteristic(characteristic: CharacteristicAddressMessage) async throws -> FlutterStandardTypedData
   func writeCharacteristic(characteristic: CharacteristicAddressMessage, value: FlutterStandardTypedData, withResponse: Bool) async throws
@@ -1346,14 +1356,19 @@ class BleHostApiSetup {
       connectChannel.setMessageHandler(nil)
     }
     /// Completes when the link is down. Never throws notConnected.
+    ///
+    /// [forget] is true when the app is done with the device. False only
+    /// cleans up a failed attempt between reconnect tries: background mode
+    /// then still restores the link if the engine goes away.
     let disconnectChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.disconnect\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       disconnectChannel.setMessageHandler { message, reply in
         let args = message as! [Any?]
         let deviceIdArg = args[0] as! String
+        let forgetArg = args[1] as! Bool
         Task { @MainActor in
           do {
-            try await api.disconnect(deviceId: deviceIdArg)
+            try await api.disconnect(deviceId: deviceIdArg, forget: forgetArg)
             reply(wrapResult(nil))
           } catch {
             reply(wrapError(error))

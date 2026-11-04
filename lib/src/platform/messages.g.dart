@@ -912,11 +912,15 @@ class BackgroundNotificationMessage {
 class SessionMessage {
   SessionMessage({
     required this.deviceId,
+    this.name,
     required this.connected,
     required this.subscribed,
   });
 
   String deviceId;
+
+  /// The name the system remembers for the device, if any.
+  String? name;
 
   /// False while the platform is still reconnecting.
   bool connected;
@@ -925,7 +929,7 @@ class SessionMessage {
   List<CharacteristicAddressMessage> subscribed;
 
   List<Object?> _toList() {
-    return <Object?>[deviceId, connected, subscribed];
+    return <Object?>[deviceId, name, connected, subscribed];
   }
 
   Object encode() {
@@ -936,8 +940,9 @@ class SessionMessage {
     result as List<Object?>;
     return SessionMessage(
       deviceId: result[0]! as String,
-      connected: result[1]! as bool,
-      subscribed: (result[2]! as List<Object?>)
+      name: result[1] as String?,
+      connected: result[2]! as bool,
+      subscribed: (result[3]! as List<Object?>)
           .cast<CharacteristicAddressMessage>(),
     );
   }
@@ -952,6 +957,7 @@ class SessionMessage {
       return true;
     }
     return _deepEquals(deviceId, other.deviceId) &&
+        _deepEquals(name, other.name) &&
         _deepEquals(connected, other.connected) &&
         _deepEquals(subscribed, other.subscribed);
   }
@@ -962,7 +968,7 @@ class SessionMessage {
 
   @override
   String toString() {
-    return 'SessionMessage(deviceId: $deviceId, connected: $connected, subscribed: $subscribed)';
+    return 'SessionMessage(deviceId: $deviceId, name: $name, connected: $connected, subscribed: $subscribed)';
   }
 }
 
@@ -1364,7 +1370,11 @@ class BleHostApi {
   }
 
   /// Completes when the link is down. Never throws notConnected.
-  Future<void> disconnect(String deviceId) async {
+  ///
+  /// [forget] is true when the app is done with the device. False only
+  /// cleans up a failed attempt between reconnect tries: background mode
+  /// then still restores the link if the engine goes away.
+  Future<void> disconnect(String deviceId, bool forget) async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.vital_bluetooth.BleHostApi.disconnect$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
@@ -1373,7 +1383,7 @@ class BleHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
-      <Object?>[deviceId],
+      <Object?>[deviceId, forget],
     );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 

@@ -1698,12 +1698,35 @@ SessionMessage::SessionMessage(
     connected_(connected),
     subscribed_(subscribed) {}
 
+SessionMessage::SessionMessage(
+  const std::string& device_id,
+  const std::string* name,
+  bool connected,
+  const EncodableList& subscribed)
+ : device_id_(device_id),
+    name_(name ? std::optional<std::string>(*name) : std::nullopt),
+    connected_(connected),
+    subscribed_(subscribed) {}
+
 const std::string& SessionMessage::device_id() const {
   return device_id_;
 }
 
 void SessionMessage::set_device_id(std::string_view value_arg) {
   device_id_ = value_arg;
+}
+
+
+const std::string* SessionMessage::name() const {
+  return name_ ? &(*name_) : nullptr;
+}
+
+void SessionMessage::set_name(const std::string_view* value_arg) {
+  name_ = value_arg ? std::optional<std::string>(*value_arg) : std::nullopt;
+}
+
+void SessionMessage::set_name(std::string_view value_arg) {
+  name_ = value_arg;
 }
 
 
@@ -1727,8 +1750,9 @@ void SessionMessage::set_subscribed(const EncodableList& value_arg) {
 
 EncodableList SessionMessage::ToEncodableList() const {
   EncodableList list;
-  list.reserve(3);
+  list.reserve(4);
   list.push_back(EncodableValue(device_id_));
+  list.push_back(name_ ? EncodableValue(*name_) : EncodableValue());
   list.push_back(EncodableValue(connected_));
   list.push_back(EncodableValue(subscribed_));
   return list;
@@ -1737,13 +1761,17 @@ EncodableList SessionMessage::ToEncodableList() const {
 SessionMessage SessionMessage::FromEncodableList(const EncodableList& list) {
   SessionMessage decoded(
     std::get<std::string>(list[0]),
-    std::get<bool>(list[1]),
-    std::get<EncodableList>(list[2]));
+    std::get<bool>(list[2]),
+    std::get<EncodableList>(list[3]));
+  auto& encodable_name = list[1];
+  if (!encodable_name.IsNull()) {
+    decoded.set_name(std::get<std::string>(encodable_name));
+  }
   return decoded;
 }
 
 bool SessionMessage::operator==(const SessionMessage& other) const {
-  return PigeonInternalDeepEquals(device_id_, other.device_id_) && PigeonInternalDeepEquals(connected_, other.connected_) && PigeonInternalDeepEquals(subscribed_, other.subscribed_);
+  return PigeonInternalDeepEquals(device_id_, other.device_id_) && PigeonInternalDeepEquals(name_, other.name_) && PigeonInternalDeepEquals(connected_, other.connected_) && PigeonInternalDeepEquals(subscribed_, other.subscribed_);
 }
 
 bool SessionMessage::operator!=(const SessionMessage& other) const {
@@ -1753,6 +1781,7 @@ bool SessionMessage::operator!=(const SessionMessage& other) const {
 size_t SessionMessage::Hash() const {
   size_t result = 1;
   result = result * 31 + PigeonInternalDeepHash(device_id_);
+  result = result * 31 + PigeonInternalDeepHash(name_);
   result = result * 31 + PigeonInternalDeepHash(connected_);
   result = result * 31 + PigeonInternalDeepHash(subscribed_);
   return result;
@@ -1764,6 +1793,13 @@ std::ostream& operator<<(
   os << "SessionMessage(";
   os << "device_id: ";
   os << PigeonInternalToString(obj.device_id_);
+  os << ", name: ";
+  if (obj.name_) {
+    os << PigeonInternalToString(*obj.name_);
+  }
+  else {
+    os << "null";
+  }
   os << ", connected: ";
   os << PigeonInternalToString(obj.connected_);
   os << ", subscribed: ";
@@ -2390,7 +2426,13 @@ void BleHostApi::SetUp(
             return;
           }
           const auto& device_id_arg = std::get<std::string>(encodable_device_id_arg);
-          api->Disconnect(device_id_arg, [reply](std::optional<FlutterError>&& output) {
+          const auto& encodable_forget_arg = args.at(1);
+          if (encodable_forget_arg.IsNull()) {
+            reply(WrapError("forget_arg unexpectedly null."));
+            return;
+          }
+          const auto& forget_arg = std::get<bool>(encodable_forget_arg);
+          api->Disconnect(device_id_arg, forget_arg, [reply](std::optional<FlutterError>&& output) {
             if (output.has_value()) {
               reply(WrapError(output.value()));
               return;

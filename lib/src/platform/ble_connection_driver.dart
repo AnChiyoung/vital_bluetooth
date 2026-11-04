@@ -62,10 +62,10 @@ class BleConnectionDriver implements ConnectionDriver {
   }
 
   @override
-  Future<void> disconnect() async {
+  Future<void> disconnect({bool forget = true}) async {
     _services = const [];
     await guardPlatformCall(
-      () => _api.disconnect(deviceId),
+      () => _api.disconnect(deviceId, forget),
       deviceId: deviceId,
       operation: BluetoothOperation.disconnect,
     );

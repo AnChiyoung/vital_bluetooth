@@ -42,7 +42,7 @@ final class BleHost: BleHostApi {
   }
 
   func connect(deviceId: String, autoConnect: Bool) async throws { throw notImplemented() }
-  func disconnect(deviceId: String) async throws { throw notImplemented() }
+  func disconnect(deviceId: String, forget: Bool) async throws { throw notImplemented() }
 
   func discoverServices(deviceId: String) async throws -> [ServiceMessage] {
     throw notImplemented()

@@ -25,8 +25,13 @@ class FakeDriver implements ConnectionDriver {
   @override
   Future<void> discoverServices() => onDiscover();
 
+  final forgets = <bool>[];
+
   @override
-  Future<void> disconnect() async => disconnectCalls++;
+  Future<void> disconnect({bool forget = true}) async {
+    disconnectCalls++;
+    forgets.add(forget);
+  }
 
   @override
   Stream<VitalBluetoothException?> get linkLost => _linkLost.stream;
@@ -146,6 +151,8 @@ void main() {
       async.flushMicrotasks();
       expect(driver.connectCalls, 1);
       expect(driver.disconnectCalls, 1);
+      // Between tries the device stays wanted.
+      expect(driver.forgets, [false]);
 
       async.elapse(const Duration(milliseconds: 500));
       expect(driver.connectCalls, 2);
@@ -172,6 +179,8 @@ void main() {
       expect(error, isA<ConnectionFailedException>());
       expect(connection.value.status, DeviceConnectionStatus.disconnected);
       expect(connection.value.error, isA<ConnectionFailedException>());
+      // Each failed try is released; giving up forgets the device.
+      expect(driver.forgets, [false, false, true]);
     });
   });
 
@@ -215,7 +224,8 @@ void main() {
           BluetoothOperation.connect,
         ),
       );
-      expect(driver.disconnectCalls, 1);
+      // The attempt is released, then the device is forgotten.
+      expect(driver.forgets, [false, true]);
     });
   });
 
@@ -318,6 +328,7 @@ void main() {
         expect(driver.connectCalls, 3);
         expect(connection.value.status, DeviceConnectionStatus.disconnected);
         expect(connection.value.error, isA<ConnectionFailedException>());
+        expect(driver.forgets, [false, false, true]);
       });
     });
 

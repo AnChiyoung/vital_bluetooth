@@ -37,7 +37,7 @@ class FakeBleHostApi extends BleHostApi {
   }
 
   @override
-  Future<void> disconnect(String deviceId) async {
+  Future<void> disconnect(String deviceId, bool forget) async {
     calls.add('disconnect $deviceId');
   }
 }

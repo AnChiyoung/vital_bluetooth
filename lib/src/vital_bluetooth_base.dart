@@ -234,8 +234,18 @@ class VitalBluetooth {
     if (!scan.controller.isClosed) await scan.controller.close();
   }
 
-  ScanResult _scanResultFrom(ScanResultMessage r, DateTime now) => ScanResult(
-    device: device(r.deviceId),
+  ScanResult _scanResultFrom(ScanResultMessage r, DateTime now) {
+    final found = device(r.deviceId);
+    setDeviceName(found, r.name);
+    return _scanResult(found, r, now);
+  }
+
+  ScanResult _scanResult(
+    BluetoothDevice found,
+    ScanResultMessage r,
+    DateTime now,
+  ) => ScanResult(
+    device: found,
     name: r.name,
     rssi: r.rssi,
     connectable: r.connectable,

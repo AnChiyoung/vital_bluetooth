@@ -169,17 +169,16 @@ internal class BleHost private constructor(private val context: Context) : BleHo
 
     override fun getSession(deviceId: String): SessionMessage? {
         events.claim(deviceId)
+        return sessionMessage(deviceId)
+    }
+
+    override fun getSessions(): List<SessionMessage> = wanted.keys.mapNotNull(::sessionMessage)
+
+    private fun sessionMessage(deviceId: String): SessionMessage? {
         val subscribed = wanted[deviceId] ?: return null
         return SessionMessage(
             deviceId = deviceId,
-            connected = sessions[deviceId]?.isConnected == true,
-            subscribed = subscribed.values.toList(),
-        )
-    }
-
-    override fun getSessions(): List<SessionMessage> = wanted.map { (deviceId, subscribed) ->
-        SessionMessage(
-            deviceId = deviceId,
+            name = runCatching { adapter.bluetooth?.getRemoteDevice(deviceId)?.name }.getOrNull(),
             connected = sessions[deviceId]?.isConnected == true,
             subscribed = subscribed.values.toList(),
         )
@@ -307,9 +306,13 @@ internal class BleHost private constructor(private val context: Context) : BleHo
         session.connect(autoConnect)
     }
 
-    override suspend fun disconnect(deviceId: String) {
-        wanted.remove(deviceId)
-        reconnects.remove(deviceId)?.cancel()
+    override suspend fun disconnect(deviceId: String, forget: Boolean) {
+        // Without forget, Dart is between reconnect attempts and still wants
+        // the device: background mode takes over if the engine goes away now.
+        if (forget) {
+            wanted.remove(deviceId)
+            reconnects.remove(deviceId)?.cancel()
+        }
         sessions[deviceId]?.disconnect()
     }
 

@@ -25,7 +25,10 @@ abstract interface class ConnectionDriver {
 
   /// Closes the link and releases every native resource for it, such as
   /// Android's `BluetoothGatt.close()`. Must be safe to call in any state.
-  Future<void> disconnect();
+  ///
+  /// [forget] is false when this only cleans up a failed attempt and more
+  /// attempts follow, and true when the app is done with the device.
+  Future<void> disconnect({bool forget = true});
 
   /// Emits when an established link drops without [disconnect] being called,
   /// with the reason if the platform gave one.
@@ -203,6 +206,8 @@ class DeviceConnection {
           error: lastError,
         ),
       );
+      // Every attempt failed: the device is no longer wanted.
+      unawaited(_releaseQuietly());
     }
     throw lastError!;
   }
@@ -244,6 +249,8 @@ class DeviceConnection {
           error: lastError,
         ),
       );
+      // The policy gave up: the device is no longer wanted.
+      unawaited(_releaseQuietly());
     }
   }
 
@@ -277,7 +284,8 @@ class DeviceConnection {
       _ensureCurrent(generation, BluetoothOperation.discoverServices);
       _emit(const DeviceConnectionState(DeviceConnectionStatus.ready));
     } on VitalBluetoothException {
-      if (generation == _generation) await _releaseQuietly();
+      // Only this attempt is over; the caller decides whether to try again.
+      if (generation == _generation) await _releaseQuietly(forget: false);
       rethrow;
     }
   }
@@ -320,9 +328,13 @@ class DeviceConnection {
     unawaited(_reconnectFlow(cause));
   }
 
-  Future<void> _releaseQuietly() async {
+  /// Closes the native link. [forget] tells the platform the app is done
+  /// with the device; false keeps it wanted between reconnect attempts.
+  Future<void> _releaseQuietly({bool forget = true}) async {
     try {
-      await _driver.disconnect().timeout(options.disconnectTimeout);
+      await _driver
+          .disconnect(forget: forget)
+          .timeout(options.disconnectTimeout);
     } catch (_) {
       // Releasing is best effort; the link is treated as closed either way.
     }

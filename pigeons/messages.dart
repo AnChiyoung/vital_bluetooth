@@ -294,11 +294,15 @@ class BackgroundNotificationMessage {
 class SessionMessage {
   SessionMessage({
     required this.deviceId,
+    this.name,
     required this.connected,
     required this.subscribed,
   });
 
   String deviceId;
+
+  /// The name the system remembers for the device, if any.
+  String? name;
 
   /// False while the platform is still reconnecting.
   bool connected;
@@ -339,8 +343,12 @@ abstract class BleHostApi {
   void connect(String deviceId, bool autoConnect);
 
   /// Completes when the link is down. Never throws notConnected.
+  ///
+  /// [forget] is true when the app is done with the device. False only
+  /// cleans up a failed attempt between reconnect tries: background mode
+  /// then still restores the link if the engine goes away.
   @async
-  void disconnect(String deviceId);
+  void disconnect(String deviceId, bool forget);
 
   @async
   List<ServiceMessage> discoverServices(String deviceId);
