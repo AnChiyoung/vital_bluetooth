@@ -14,19 +14,23 @@
 //   or characteristics with the same UUID, and the UUID alone can't tell them
 //   apart.
 // - A failed call throws a platform error whose code is one of the codes
-//   below. The Dart side turns it into a VitalBluetoothException.
+//   below. The Dart side turns it into a VitalBluetoothException
+//   (lib/src/platform/platform_errors.dart).
 //
-//   unsupported        the platform or hardware can't do this
-//   poweredOff         the Bluetooth adapter is off
-//   permissionDenied   details: list of missing permission names
-//   deviceNotFound
-//   notConnected       the call needs a connected device
-//   connectionFailed   details: platform status code
-//   gattError          details: ATT status code
-//   attributeNotFound  service, characteristic or descriptor not found
-//   bondingFailed
-//   busy               the platform is already running this kind of call
-//   unknown
+//   code               meaning                          details
+//   unsupported        the platform can't do this       -
+//   poweredOff         the Bluetooth adapter is off     -
+//   permissionDenied   a permission is missing          List<String> of names
+//   deviceNotFound     unknown device ID                -
+//   notConnected       the call needs a connected link  -
+//   connectionFailed   the link couldn't be opened      String: raw status
+//   gattError          the device answered an error     int: ATT status
+//   attributeNotFound  no such service/char/descriptor  String: its UUID
+//   bondingFailed      pairing failed or was rejected   String: raw status
+//   unknown            anything else                    String: raw status
+//
+//   PlatformErrorMessage in events uses the same codes, with the raw status
+//   in platformCode.
 
 import 'package:pigeon/pigeon.dart';
 
