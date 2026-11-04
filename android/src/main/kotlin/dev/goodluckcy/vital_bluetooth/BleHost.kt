@@ -235,7 +235,7 @@ internal class BleHost private constructor(private val context: Context) : BleHo
 
     override fun getCapabilities() = CapabilitiesMessage(
         ble = adapter.hasBle,
-        classic = adapter.bluetooth != null,
+        classic = false, // Not written yet.
         bonding = true,
         connectionPriority = true,
         phy = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&

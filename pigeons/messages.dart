@@ -20,10 +20,10 @@
 //   code                 meaning                            details
 //   unsupported          the platform can't do this         -
 //   poweredOff           the Bluetooth adapter is off       -
-//   locationServicesOff  phone location is off (Android 6-11)  -
 //   locationServicesOff  phone location is off (Android 6-11, needed to scan)  -
 //   deviceNotFound       unknown device ID                  -
 //   notConnected         the call needs a connected link    -
+//   permissionDenied     a permission is missing            List<String>: names
 //   connectionFailed     the link couldn't be opened        String: raw status
 //   gattError            the device answered an error       int: ATT status
 //   attributeNotFound    no such service/char/descriptor    String: its UUID
