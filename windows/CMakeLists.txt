@@ -20,6 +20,12 @@ set(PLUGIN_NAME "vital_bluetooth_plugin")
 list(APPEND PLUGIN_SOURCES
   "vital_bluetooth_plugin.cpp"
   "vital_bluetooth_plugin.h"
+  "ble_host.cpp"
+  "ble_host.h"
+  "classic_host.cpp"
+  "classic_host.h"
+  "messages.g.cpp"
+  "messages.g.h"
 )
 
 # Define the plugin library target. Its name must not be changed (see comment

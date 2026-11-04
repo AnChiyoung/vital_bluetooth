@@ -1,18 +1,23 @@
 #ifndef FLUTTER_PLUGIN_VITAL_BLUETOOTH_PLUGIN_H_
 #define FLUTTER_PLUGIN_VITAL_BLUETOOTH_PLUGIN_H_
 
-#include <flutter/method_channel.h>
+#include <flutter/binary_messenger.h>
 #include <flutter/plugin_registrar_windows.h>
 
 #include <memory>
 
+#include "ble_host.h"
+#include "classic_host.h"
+#include "messages.g.h"
+
 namespace vital_bluetooth {
 
+// Registers the Pigeon host APIs with the Flutter engine and owns them.
 class VitalBluetoothPlugin : public flutter::Plugin {
  public:
-  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
+  static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
 
-  VitalBluetoothPlugin();
+  explicit VitalBluetoothPlugin(flutter::BinaryMessenger* messenger);
 
   virtual ~VitalBluetoothPlugin();
 
@@ -20,10 +25,12 @@ class VitalBluetoothPlugin : public flutter::Plugin {
   VitalBluetoothPlugin(const VitalBluetoothPlugin&) = delete;
   VitalBluetoothPlugin& operator=(const VitalBluetoothPlugin&) = delete;
 
-  // Called when a method is called on this plugin's channel from Dart.
-  void HandleMethodCall(
-      const flutter::MethodCall<flutter::EncodableValue> &method_call,
-      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+ private:
+  flutter::BinaryMessenger* messenger_;
+  BleFlutterApi ble_events_;
+  ClassicFlutterApi classic_events_;
+  BleHost ble_;
+  ClassicHost classic_;
 };
 
 }  // namespace vital_bluetooth

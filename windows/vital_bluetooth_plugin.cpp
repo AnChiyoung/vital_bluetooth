@@ -3,57 +3,30 @@
 // This must be included before many other Windows headers.
 #include <windows.h>
 
-// For getPlatformVersion; remove unless needed for your plugin implementation.
-#include <VersionHelpers.h>
-
-#include <flutter/method_channel.h>
-#include <flutter/plugin_registrar_windows.h>
-#include <flutter/standard_method_codec.h>
-
 #include <memory>
-#include <sstream>
 
 namespace vital_bluetooth {
 
 // static
 void VitalBluetoothPlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows *registrar) {
-  auto channel =
-      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          registrar->messenger(), "vital_bluetooth",
-          &flutter::StandardMethodCodec::GetInstance());
-
-  auto plugin = std::make_unique<VitalBluetoothPlugin>();
-
-  channel->SetMethodCallHandler(
-      [plugin_pointer = plugin.get()](const auto &call, auto result) {
-        plugin_pointer->HandleMethodCall(call, std::move(result));
-      });
-
-  registrar->AddPlugin(std::move(plugin));
+    flutter::PluginRegistrarWindows* registrar) {
+  registrar->AddPlugin(
+      std::make_unique<VitalBluetoothPlugin>(registrar->messenger()));
 }
 
-VitalBluetoothPlugin::VitalBluetoothPlugin() {}
+VitalBluetoothPlugin::VitalBluetoothPlugin(flutter::BinaryMessenger* messenger)
+    : messenger_(messenger),
+      ble_events_(messenger),
+      classic_events_(messenger),
+      ble_(&ble_events_),
+      classic_(&classic_events_) {
+  BleHostApi::SetUp(messenger_, &ble_);
+  ClassicHostApi::SetUp(messenger_, &classic_);
+}
 
-VitalBluetoothPlugin::~VitalBluetoothPlugin() {}
-
-void VitalBluetoothPlugin::HandleMethodCall(
-    const flutter::MethodCall<flutter::EncodableValue> &method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (method_call.method_name().compare("getPlatformVersion") == 0) {
-    std::ostringstream version_stream;
-    version_stream << "Windows ";
-    if (IsWindows10OrGreater()) {
-      version_stream << "10+";
-    } else if (IsWindows8OrGreater()) {
-      version_stream << "8";
-    } else if (IsWindows7OrGreater()) {
-      version_stream << "7";
-    }
-    result->Success(flutter::EncodableValue(version_stream.str()));
-  } else {
-    result->NotImplemented();
-  }
+VitalBluetoothPlugin::~VitalBluetoothPlugin() {
+  BleHostApi::SetUp(messenger_, nullptr);
+  ClassicHostApi::SetUp(messenger_, nullptr);
 }
 
 }  // namespace vital_bluetooth

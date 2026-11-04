@@ -1,42 +1,37 @@
-#include <flutter/method_call.h>
-#include <flutter/method_result_functions.h>
-#include <flutter/standard_method_codec.h>
 #include <gtest/gtest.h>
 #include <windows.h>
 
-#include <memory>
+#include <optional>
 #include <string>
-#include <variant>
 
-#include "vital_bluetooth_plugin.h"
+#include "ble_host.h"
+#include "messages.g.h"
 
 namespace vital_bluetooth {
 namespace test {
 
-namespace {
+TEST(BleHost, ReportsWindowsCapabilities) {
+  BleFlutterApi events(nullptr);
+  BleHost host(&events);
 
-using flutter::EncodableMap;
-using flutter::EncodableValue;
-using flutter::MethodCall;
-using flutter::MethodResultFunctions;
+  ErrorOr<CapabilitiesMessage> caps = host.GetCapabilities();
 
-}  // namespace
+  ASSERT_FALSE(caps.has_error());
+  EXPECT_TRUE(caps.value().ble());
+  EXPECT_TRUE(caps.value().classic());
+  EXPECT_FALSE(caps.value().connection_priority());
+}
 
-TEST(VitalBluetoothPlugin, GetPlatformVersion) {
-  VitalBluetoothPlugin plugin;
-  // Save the reply value from the success callback.
-  std::string result_string;
-  plugin.HandleMethodCall(
-      MethodCall("getPlatformVersion", std::make_unique<EncodableValue>()),
-      std::make_unique<MethodResultFunctions<>>(
-          [&result_string](const EncodableValue* result) {
-            result_string = std::get<std::string>(*result);
-          },
-          nullptr, nullptr));
+TEST(BleHost, UnimplementedCallsAnswerUnsupported) {
+  BleFlutterApi events(nullptr);
+  BleHost host(&events);
+  std::optional<FlutterError> error;
 
-  // Since the exact string varies by host, just ensure that it's a string
-  // with the expected format.
-  EXPECT_TRUE(result_string.rfind("Windows ", 0) == 0);
+  host.Connect("AA:BB", false,
+               [&error](std::optional<FlutterError> reply) { error = reply; });
+
+  ASSERT_TRUE(error.has_value());
+  EXPECT_EQ(error->code(), "unsupported");
 }
 
 }  // namespace test
