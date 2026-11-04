@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:vital_bluetooth/vital_bluetooth.dart';
 
 /// Connects to one device and lets you try its characteristics.
+///
+/// Leaving the page keeps the connection: the device object belongs to
+/// [VitalBluetooth], not to this page, so coming back picks it up again.
 class DevicePage extends StatefulWidget {
   const DevicePage({super.key, required this.device, this.name});
 
@@ -17,13 +20,6 @@ class DevicePage extends StatefulWidget {
 class _DevicePageState extends State<DevicePage> {
   BluetoothDevice get _device => widget.device;
   String? _message;
-
-  @override
-  void dispose() {
-    // Leaving the page ends the connection.
-    unawaited(_device.disconnect());
-    super.dispose();
-  }
 
   Future<void> _try(String label, Future<Object?> Function() action) async {
     try {
@@ -148,21 +144,30 @@ class _CharacteristicTileState extends State<_CharacteristicTile> {
   BluetoothCharacteristic get _c => widget.characteristic;
 
   @override
+  void initState() {
+    super.initState();
+    // Notifications stay on while the page is closed; show them again.
+    if (_c.isNotifying) _listen();
+  }
+
+  @override
   void dispose() {
     _values?.cancel();
     super.dispose();
   }
 
+  void _listen() {
+    _values ??= _c.values.listen(
+      (v) => setState(() {
+        _last = _hex(v);
+        _count++;
+      }),
+    );
+  }
+
   Future<void> _toggleNotify() async {
     final enable = !_c.isNotifying;
-    if (enable) {
-      _values ??= _c.values.listen(
-        (v) => setState(() {
-          _last = _hex(v);
-          _count++;
-        }),
-      );
-    }
+    if (enable) _listen();
     await widget.onTry(
       'Notify ${enable ? 'on' : 'off'}',
       () => _c.setNotify(enable),

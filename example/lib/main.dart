@@ -33,6 +33,10 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> {
   final _bluetooth = VitalBluetooth();
   final _results = <String, ScanResult>{};
+
+  /// Devices opened in this session, kept so their connection stays visible
+  /// after leaving the device page.
+  final _myDevices = <String, (BluetoothDevice, String?)>{};
   StreamSubscription<ScanResult>? _scan;
   PermissionStatus? _permission;
   String? _error;
@@ -96,6 +100,15 @@ class _ScanPageState extends State<ScanPage> {
     });
   }
 
+  void _open(BluetoothDevice device, String? name) {
+    setState(() => _myDevices[device.id] = (device, name));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DevicePage(device: device, name: name),
+      ),
+    );
+  }
+
   void _showError(Object error) {
     if (!mounted) return;
     setState(() => _error = error.toString());
@@ -141,9 +154,28 @@ class _ScanPageState extends State<ScanPage> {
             ),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: results.length,
-              itemBuilder: (context, i) => _ResultTile(results[i]),
+            child: ListView(
+              children: [
+                if (_myDevices.isNotEmpty) ...[
+                  const _Header('My devices'),
+                  for (final (device, name) in _myDevices.values)
+                    _DeviceTile(
+                      device: device,
+                      name: name,
+                      onTap: () => _open(device, name),
+                    ),
+                  const _Header('Nearby'),
+                ],
+                for (final r in results)
+                  if (!_myDevices.containsKey(r.device.id))
+                    _DeviceTile(
+                      device: r.device,
+                      name: r.name,
+                      rssi: r.rssi,
+                      enabled: r.connectable,
+                      onTap: () => _open(r.device, r.name),
+                    ),
+              ],
             ),
           ),
         ],
@@ -157,24 +189,60 @@ class _ScanPageState extends State<ScanPage> {
   }
 }
 
-class _ResultTile extends StatelessWidget {
-  const _ResultTile(this.result);
+class _Header extends StatelessWidget {
+  const _Header(this.text);
 
-  final ScanResult result;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+    child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+  );
+}
+
+/// One device with its live connection status.
+class _DeviceTile extends StatelessWidget {
+  const _DeviceTile({
+    required this.device,
+    required this.name,
+    required this.onTap,
+    this.rssi,
+    this.enabled = true,
+  });
+
+  final BluetoothDevice device;
+  final String? name;
+  final int? rssi;
+  final bool enabled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final name = result.name;
-    return ListTile(
-      title: Text(name == null || name.isEmpty ? '(no name)' : name),
-      subtitle: Text(result.device.id),
-      trailing: Text('${result.rssi} dBm'),
-      enabled: result.connectable,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => DevicePage(device: result.device, name: name),
-        ),
-      ),
+    final label = name == null || name!.isEmpty ? '(no name)' : name!;
+    return ValueListenableBuilder(
+      valueListenable: device.connectionState,
+      builder: (context, state, _) {
+        final status = state.status;
+        final connected = status != DeviceConnectionStatus.disconnected;
+        return ListTile(
+          leading: Icon(
+            state.isReady
+                ? Icons.bluetooth_connected
+                : connected
+                ? Icons.bluetooth_searching
+                : Icons.bluetooth,
+            color: state.isReady ? Theme.of(context).colorScheme.primary : null,
+          ),
+          title: Text(label),
+          subtitle: Text(
+            connected ? '${device.id} · ${status.name}' : device.id,
+          ),
+          trailing: rssi == null ? null : Text('$rssi dBm'),
+          enabled: enabled || connected,
+          onTap: onTap,
+        );
+      },
     );
   }
 }
