@@ -22,6 +22,8 @@ list(APPEND PLUGIN_SOURCES
   "vital_bluetooth_plugin.h"
   "ble_host.cpp"
   "ble_host.h"
+  "ui_thread.cpp"
+  "ui_thread.h"
   "classic_host.cpp"
   "classic_host.h"
   "messages.g.cpp"
@@ -41,6 +43,10 @@ add_library(${PLUGIN_NAME} SHARED
 # full control over build settings.
 apply_standard_settings(${PLUGIN_NAME})
 
+# C++/WinRT (Windows.Devices.Bluetooth) needs C++20 coroutines and windowsapp.
+target_compile_features(${PLUGIN_NAME} PRIVATE cxx_std_20)
+target_compile_definitions(${PLUGIN_NAME} PRIVATE NOMINMAX)
+
 # Symbols are hidden by default to reduce the chance of accidental conflicts
 # between plugins. This should not be removed; any symbols that should be
 # exported should be explicitly exported with the FLUTTER_PLUGIN_EXPORT macro.
@@ -52,7 +58,7 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # dependencies here.
 target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
+target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin windowsapp)
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
@@ -91,8 +97,10 @@ add_executable(${TEST_RUNNER}
   ${PLUGIN_SOURCES}
 )
 apply_standard_settings(${TEST_RUNNER})
+target_compile_features(${TEST_RUNNER} PRIVATE cxx_std_20)
+target_compile_definitions(${TEST_RUNNER} PRIVATE NOMINMAX)
 target_include_directories(${TEST_RUNNER} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(${TEST_RUNNER} PRIVATE flutter_wrapper_plugin)
+target_link_libraries(${TEST_RUNNER} PRIVATE flutter_wrapper_plugin windowsapp)
 target_link_libraries(${TEST_RUNNER} PRIVATE gtest_main gmock)
 # flutter_wrapper_plugin has link dependencies on the Flutter DLL.
 add_custom_command(TARGET ${TEST_RUNNER} POST_BUILD

@@ -9,6 +9,7 @@
 #include "ble_host.h"
 #include "classic_host.h"
 #include "messages.g.h"
+#include "ui_thread.h"
 
 namespace vital_bluetooth {
 
