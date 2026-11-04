@@ -19,6 +19,7 @@ internal class Permissions(private val context: Context) :
 
     private var activity: Activity? = null
     private var pending: CompletableDeferred<PermissionStatusMessage>? = null
+    private var notificationsPending: CompletableDeferred<Unit>? = null
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     val required: List<String>
@@ -33,6 +34,8 @@ internal class Permissions(private val context: Context) :
         if (activity == null) {
             pending?.complete(status())
             pending = null
+            notificationsPending?.complete(Unit)
+            notificationsPending = null
         }
     }
 
@@ -86,11 +89,33 @@ internal class Permissions(private val context: Context) :
         return deferred.await()
     }
 
+    /**
+     * Asks for POST_NOTIFICATIONS on Android 13+, so the background-mode
+     * notification shows. Background mode works without it; the notification
+     * is just hidden. Returns at once when there is no Activity.
+     */
+    suspend fun requestNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val permission = Manifest.permission.POST_NOTIFICATIONS
+        if (has(permission)) return
+        val activity = activity ?: return
+        notificationsPending?.let { return it.await() }
+        val deferred = CompletableDeferred<Unit>()
+        notificationsPending = deferred
+        activity.requestPermissions(arrayOf(permission), NOTIFICATIONS_REQUEST_CODE)
+        deferred.await()
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray,
     ): Boolean {
+        if (requestCode == NOTIFICATIONS_REQUEST_CODE) {
+            notificationsPending?.complete(Unit)
+            notificationsPending = null
+            return true
+        }
         if (requestCode != REQUEST_CODE) return false
         pending?.complete(status())
         pending = null
@@ -99,6 +124,7 @@ internal class Permissions(private val context: Context) :
 
     private companion object {
         const val REQUEST_CODE = 0xB1E
+        const val NOTIFICATIONS_REQUEST_CODE = 0xB1F
         const val PREFS = "dev.goodluckcy.vital_bluetooth.permissions"
     }
 }

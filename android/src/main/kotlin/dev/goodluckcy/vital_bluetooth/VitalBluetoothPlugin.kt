@@ -7,18 +7,22 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 /**
  * Registers the Pigeon host APIs with the Flutter engine.
  *
- * The Activity is needed only for the permission prompt and the
- * "turn Bluetooth on" prompt.
+ * The Activity is needed only for the permission prompts and the
+ * "turn Bluetooth on" prompt. The BLE host itself is shared by the whole
+ * process; each engine only attaches to it.
  */
 class VitalBluetoothPlugin : FlutterPlugin, ActivityAware {
     private var ble: BleHost? = null
+    private var events: BleFlutterApi? = null
     private var activityBinding: ActivityPluginBinding? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         val messenger = binding.binaryMessenger
-        val ble = BleHost(binding.applicationContext, BleFlutterApi(messenger))
-        ble.start()
+        val ble = BleHost.get(binding.applicationContext)
+        val events = BleFlutterApi(messenger)
+        ble.attachEngine(events)
         this.ble = ble
+        this.events = events
         BleHostApi.setUp(messenger, ble)
         ClassicHostApi.setUp(messenger, ClassicHost(ClassicFlutterApi(messenger)))
     }
@@ -27,7 +31,8 @@ class VitalBluetoothPlugin : FlutterPlugin, ActivityAware {
         val messenger = binding.binaryMessenger
         BleHostApi.setUp(messenger, null)
         ClassicHostApi.setUp(messenger, null)
-        ble?.dispose()
+        events?.let { ble?.detachEngine(it) }
+        events = null
         ble = null
     }
 

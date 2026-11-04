@@ -23,9 +23,27 @@
         tools:targetApi="s" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <!-- Background mode (VitalBluetooth.enableBackgroundMode). An app that
+         never uses it can drop these and the service with tools:node="remove"
+         in its own manifest. POST_NOTIFICATIONS lets the notification show on
+         Android 13+; the service runs without it. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"
+        tools:targetApi="upside_down_cake" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- The app still installs on devices without BLE; getCapabilities()
          reports it. -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="false" />
+
+    <application>
+        <service
+            android:name="dev.goodluckcy.vital_bluetooth.VitalBluetoothService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"
+            tools:targetApi="q" />
+    </application>
 </manifest>

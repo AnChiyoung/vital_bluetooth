@@ -32,7 +32,8 @@ internal class GattSession(
     private val context: Context,
     private val device: BluetoothDevice,
     private val events: BleEventSender,
-    private val onClosed: (GattSession) -> Unit,
+    // dropped is true when an established link went down without disconnect().
+    private val onClosed: (session: GattSession, dropped: Boolean) -> Unit,
 ) {
     private enum class Kind {
         DISCOVER, READ, WRITE, READ_DESCRIPTOR, WRITE_DESCRIPTOR, MTU, PHY, RSSI
@@ -49,6 +50,8 @@ internal class GattSession(
 
     var mtu = DEFAULT_MTU
         private set
+
+    val isConnected: Boolean get() = synchronized(lock) { connected }
 
     suspend fun connect(autoConnect: Boolean) {
         val wait = CompletableDeferred<Unit>()
@@ -67,7 +70,7 @@ internal class GattSession(
         if (gatt == null) {
             synchronized(lock) { connectWait = null }
             events.connectionState(deviceId, ConnectionStateMessage.DISCONNECTED)
-            onClosed(this)
+            onClosed(this, false)
             throw connectionFailed(deviceId, -1)
         }
         synchronized(lock) {
@@ -86,7 +89,7 @@ internal class GattSession(
     suspend fun disconnect() {
         val (gatt, wasConnected) = synchronized(lock) { gatt to connected }
         if (gatt == null) {
-            onClosed(this)
+            onClosed(this, false)
             return
         }
         events.connectionState(deviceId, ConnectionStateMessage.DISCONNECTING)
@@ -270,7 +273,7 @@ internal class GattSession(
         waits.second?.complete(Unit)
         waits.third?.result?.completeExceptionally(notConnected(deviceId))
         events.connectionState(deviceId, ConnectionStateMessage.DISCONNECTED, error)
-        onClosed(this)
+        onClosed(this, error?.code == "notConnected")
     }
 
     /**

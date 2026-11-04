@@ -12,25 +12,43 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.location.LocationManager
 import android.os.Build
+import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Android side of [BleHostApi].
  *
  * Every call runs on the main thread (Pigeon starts the coroutines there).
  * Each connected device has its own [GattSession].
+ *
+ * There is one per process, not one per Flutter engine, so links can outlive
+ * the engine. Without background mode, an engine going away closes every
+ * link as before. With it, links stay up, a dropped link is reconnected
+ * here in native code, notifications are turned back on, and values are
+ * buffered until Dart takes them.
  */
 @SuppressLint("MissingPermission") // Every entry point checks permissions first.
-internal class BleHost(
-    private val context: Context,
-    api: BleFlutterApi,
-) : BleHostApi {
-    private val events = BleEventSender(api)
+internal class BleHost private constructor(private val context: Context) : BleHostApi {
+    private val events = BleEventSender()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val permissions = Permissions(context)
     private val adapter = Adapter(context, ::onAdapterStateChanged)
     private val scanner = Scanner(adapter, events)
     private val sessions = HashMap<String, GattSession>()
     private val pendingBonds = HashMap<String, CompletableDeferred<Unit>>()
+
+    // Devices Dart asked to connect and has not disconnected, with the
+    // characteristics it turned notifications on for, by address key.
+    private val wanted = HashMap<String, LinkedHashMap<String, CharacteristicAddressMessage>>()
+    private val reconnects = HashMap<String, Job>()
+    private var backgroundMode = false
 
     private val bondReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -61,13 +79,45 @@ internal class BleHost(
 
     // --- Lifecycle, called by VitalBluetoothPlugin ---
 
-    fun start() {
+    init {
         adapter.start()
         val filter = IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(bondReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             context.registerReceiver(bondReceiver, filter)
+        }
+    }
+
+    fun attachEngine(api: BleFlutterApi) {
+        events.attach(api)
+        // Dart reconnects from here on. Links still being restored are
+        // handed back: Dart sees them as not connected and runs its own
+        // reconnect policy.
+        reconnects.values.forEach { it.cancel() }
+        reconnects.clear()
+    }
+
+    fun detachEngine(api: BleFlutterApi) {
+        events.detach(api)
+        if (events.attached) return // Another engine took over.
+        scanner.stop()
+        pendingBonds.values.forEach {
+            it.completeExceptionally(VitalBluetoothError("unknown", "The plugin was detached."))
+        }
+        pendingBonds.clear()
+        if (!backgroundMode) {
+            wanted.clear()
+            sessions.values.toList().forEach { it.release() }
+            sessions.clear()
+            return
+        }
+        // Keep what is up, and take over links Dart was still restoring.
+        for (deviceId in wanted.keys.toList()) {
+            val session = sessions[deviceId]
+            if (session?.isConnected == true) continue
+            session?.release()
+            reconnectNatively(deviceId)
         }
     }
 
@@ -79,17 +129,107 @@ internal class BleHost(
     val permissionListener get() = permissions
     val activityResultListener get() = adapter
 
-    fun dispose() {
-        scanner.stop()
-        sessions.values.toList().forEach { it.release() }
-        sessions.clear()
-        pendingBonds.values.forEach {
-            it.completeExceptionally(VitalBluetoothError("unknown", "The plugin was detached."))
+    /** Called by [VitalBluetoothService] when Android refused to start it. */
+    fun onServiceFailed() {
+        if (!backgroundMode) return
+        backgroundMode = false
+        events.buffering = false
+        Log.e(TAG, "Background mode stopped: the foreground service could not start.")
+    }
+
+    // --- Background mode ---
+
+    override suspend fun enableBackgroundMode(notification: BackgroundNotificationMessage) {
+        // Android 14 only starts a connectedDevice service with this granted.
+        permissions.require(connectPermissions())
+        permissions.requestNotifications()
+        try {
+            VitalBluetoothService.start(context, notification.title, notification.text)
+        } catch (e: IllegalStateException) {
+            // Android 12+ refuses to start it while the app is in the background.
+            throw VitalBluetoothError(
+                "unknown",
+                "Background mode can only be turned on while the app is in the foreground.",
+                e.message,
+            )
         }
-        pendingBonds.clear()
-        context.unregisterReceiver(bondReceiver)
-        adapter.stop()
-        events.dispose()
+        backgroundMode = true
+        events.buffering = true
+    }
+
+    override fun disableBackgroundMode() {
+        backgroundMode = false
+        events.buffering = false
+        reconnects.values.forEach { it.cancel() }
+        reconnects.clear()
+        VitalBluetoothService.stop(context)
+    }
+
+    override fun isBackgroundModeEnabled(): Boolean = backgroundMode
+
+    override fun getSession(deviceId: String): SessionMessage? {
+        events.claim(deviceId)
+        val subscribed = wanted[deviceId] ?: return null
+        return SessionMessage(
+            deviceId = deviceId,
+            connected = sessions[deviceId]?.isConnected == true,
+            subscribed = subscribed.values.toList(),
+        )
+    }
+
+    override fun getSessions(): List<SessionMessage> = wanted.map { (deviceId, subscribed) ->
+        SessionMessage(
+            deviceId = deviceId,
+            connected = sessions[deviceId]?.isConnected == true,
+            subscribed = subscribed.values.toList(),
+        )
+    }
+
+    override fun takeBufferedValues(): List<CharacteristicValueMessage> = events.takeBuffered()
+
+    /**
+     * Restores [deviceId]'s link without Dart. Android's autoConnect waits
+     * for the device to come back in range at no battery cost, so the
+     * attempt itself has no time limit; failures retry with backoff.
+     */
+    private fun reconnectNatively(deviceId: String) {
+        if (reconnects.containsKey(deviceId)) return
+        val job = scope.launch {
+            var backoff = RECONNECT_MIN_DELAY_MS
+            while (backgroundMode && !events.attached && deviceId in wanted) {
+                val session = try {
+                    newSession(deviceId)
+                } catch (e: VitalBluetoothError) {
+                    Log.w(TAG, "Can't reconnect $deviceId: ${e.message}")
+                    break
+                }
+                try {
+                    session.connect(autoConnect = true)
+                    session.discoverServices()
+                    for (address in wanted[deviceId]?.values?.toList().orEmpty()) {
+                        runCatching { session.setNotify(address, true) }
+                    }
+                    Log.i(TAG, "Reconnected $deviceId in the background.")
+                    break
+                } catch (e: CancellationException) {
+                    if (!session.isConnected) session.release()
+                    throw e
+                } catch (e: Exception) {
+                    session.release()
+                    delay(backoff)
+                    backoff = minOf(backoff * 2, RECONNECT_MAX_DELAY_MS)
+                }
+            }
+        }
+        reconnects[deviceId] = job
+        job.invokeOnCompletion { if (reconnects[deviceId] === job) reconnects.remove(deviceId) }
+    }
+
+    private fun newSession(deviceId: String): GattSession {
+        adapter.requireOn()
+        permissions.require(connectPermissions())
+        return GattSession(deviceId, context, remoteDevice(deviceId), events, ::onSessionClosed)
+            .also { sessions[deviceId] = it }
     }
 
     // --- Adapter and permissions ---
@@ -161,13 +301,15 @@ internal class BleHost(
     override suspend fun connect(deviceId: String, autoConnect: Boolean) {
         adapter.requireOn()
         permissions.require(connectPermissions())
-        val session = sessions.getOrPut(deviceId) {
-            GattSession(deviceId, context, remoteDevice(deviceId), events, ::onSessionClosed)
-        }
+        events.claim(deviceId)
+        wanted.getOrPut(deviceId) { LinkedHashMap() }
+        val session = sessions[deviceId] ?: newSession(deviceId)
         session.connect(autoConnect)
     }
 
     override suspend fun disconnect(deviceId: String) {
+        wanted.remove(deviceId)
+        reconnects.remove(deviceId)?.cancel()
         sessions[deviceId]?.disconnect()
     }
 
@@ -185,8 +327,15 @@ internal class BleHost(
         withResponse: Boolean,
     ) = session(characteristic.deviceId).write(characteristic, value, withResponse)
 
-    override suspend fun setNotify(characteristic: CharacteristicAddressMessage, enable: Boolean) =
+    override suspend fun setNotify(characteristic: CharacteristicAddressMessage, enable: Boolean) {
         session(characteristic.deviceId).setNotify(characteristic, enable)
+        val subscribed = wanted[characteristic.deviceId] ?: return
+        if (enable) {
+            subscribed[characteristic.key] = characteristic
+        } else {
+            subscribed.remove(characteristic.key)
+        }
+    }
 
     override suspend fun readDescriptor(
         characteristic: CharacteristicAddressMessage,
@@ -264,8 +413,12 @@ internal class BleHost(
         }
     }
 
-    private fun onSessionClosed(session: GattSession) {
+    private fun onSessionClosed(session: GattSession, dropped: Boolean) {
         if (sessions[session.deviceId] === session) sessions.remove(session.deviceId)
+        // With an engine attached, Dart sees the drop and reconnects itself.
+        if (dropped && backgroundMode && !events.attached && session.deviceId in wanted) {
+            reconnectNatively(session.deviceId)
+        }
     }
 
     private fun session(deviceId: String): GattSession =
@@ -298,9 +451,22 @@ internal class BleHost(
         throw permissionError(e)
     }
 
-    private companion object {
+    companion object {
         // BluetoothDevice.EXTRA_REASON is hidden, but every Android version sends it.
-        const val EXTRA_REASON = "android.bluetooth.device.extra.REASON"
+        private const val EXTRA_REASON = "android.bluetooth.device.extra.REASON"
+        private const val RECONNECT_MIN_DELAY_MS = 1_000L
+        private const val RECONNECT_MAX_DELAY_MS = 30_000L
+
+        @Volatile
+        private var instance: BleHost? = null
+
+        /** The process-wide host, created on first use. */
+        fun get(context: Context): BleHost = instance ?: synchronized(this) {
+            instance ?: BleHost(context.applicationContext).also { instance = it }
+        }
+
+        /** The host if it exists, without creating it. */
+        fun current(): BleHost? = instance
     }
 }
 
@@ -317,3 +483,6 @@ internal fun Intent.bluetoothDevice(): BluetoothDevice? =
     } else {
         getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
     }
+
+private val CharacteristicAddressMessage.key: String
+    get() = "$serviceUuid/$serviceInstance/$characteristicUuid/$characteristicInstance"
