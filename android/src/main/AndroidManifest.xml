@@ -1,3 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="dev.goodluckcy.vital_bluetooth">
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Android 11 and older. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <!-- Scanning needs location on Android 6 to 11. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <!-- Android 12 and newer. neverForLocation means scanning doesn't need
+         the location permission. It also hides some beacon advertisements;
+         an app that needs those can remove the flag with
+         tools:remove="android:usesPermissionFlags" in its own manifest. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- The app still installs on devices without BLE; getCapabilities()
+         reports it. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
 </manifest>
