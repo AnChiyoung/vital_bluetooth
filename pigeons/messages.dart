@@ -17,17 +17,18 @@
 //   below. The Dart side turns it into a VitalBluetoothException
 //   (lib/src/platform/platform_errors.dart).
 //
-//   code               meaning                          details
-//   unsupported        the platform can't do this       -
-//   poweredOff         the Bluetooth adapter is off     -
-//   permissionDenied   a permission is missing          List<String> of names
-//   deviceNotFound     unknown device ID                -
-//   notConnected       the call needs a connected link  -
-//   connectionFailed   the link couldn't be opened      String: raw status
-//   gattError          the device answered an error     int: ATT status
-//   attributeNotFound  no such service/char/descriptor  String: its UUID
-//   bondingFailed      pairing failed or was rejected   String: raw status
-//   unknown            anything else                    String: raw status
+//   code                 meaning                            details
+//   unsupported          the platform can't do this         -
+//   poweredOff           the Bluetooth adapter is off       -
+//   locationServicesOff  phone location is off (Android 6-11)  -
+//   locationServicesOff  phone location is off (Android 6-11, needed to scan)  -
+//   deviceNotFound       unknown device ID                  -
+//   notConnected         the call needs a connected link    -
+//   connectionFailed     the link couldn't be opened        String: raw status
+//   gattError            the device answered an error       int: ATT status
+//   attributeNotFound    no such service/char/descriptor    String: its UUID
+//   bondingFailed        pairing failed or was rejected     String: raw status
+//   unknown              anything else                      String: raw status
 //
 //   PlatformErrorMessage in events uses the same codes, with the raw status
 //   in platformCode.

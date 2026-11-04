@@ -15,6 +15,7 @@ abstract final class PlatformErrorCode {
   static const gattError = 'gattError';
   static const attributeNotFound = 'attributeNotFound';
   static const bondingFailed = 'bondingFailed';
+  static const locationServicesOff = 'locationServicesOff';
   static const unknown = 'unknown';
 
   /// Thrown by the generated code when no platform side is registered.
@@ -134,6 +135,8 @@ VitalBluetoothException _map({
         details is String ? details : 'unknown',
         platformMessage: message,
       );
+    case PlatformErrorCode.locationServicesOff:
+      return LocationServicesDisabledException(platformMessage: message);
     case PlatformErrorCode.bondingFailed:
       return BondingFailedException(
         device,

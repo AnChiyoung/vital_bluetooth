@@ -74,6 +74,7 @@ void main() {
       PermissionDeniedException() => 'permission',
       FeatureNotSupportedException() => 'feature',
       UnknownBluetoothException() => 'unknown',
+      LocationServicesDisabledException() => 'location',
       DeviceException() => 'device',
     };
 

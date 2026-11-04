@@ -80,6 +80,23 @@ final class PermissionDeniedException extends VitalBluetoothException {
   final bool permanentlyDenied;
 }
 
+/// Location services are off, so Android 6 to 11 returns no scan results.
+///
+/// Those Android versions only deliver BLE scan results while the phone's
+/// location setting is on, even with the permission granted. Ask the user
+/// to turn it on. Android 12 and newer don't need it.
+final class LocationServicesDisabledException extends VitalBluetoothException {
+  const LocationServicesDisabledException({
+    String? message,
+    super.platformCode,
+    super.platformMessage,
+  }) : super(
+         message ??
+             'Location services are off; Android needs them on to scan for '
+                 'Bluetooth devices',
+       );
+}
+
 /// The requested feature is not available on this platform or device.
 ///
 /// For example Bluetooth Classic on iOS, or 2M PHY on old Android hardware.

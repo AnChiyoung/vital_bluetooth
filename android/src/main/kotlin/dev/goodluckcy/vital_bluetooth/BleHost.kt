@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.location.LocationManager
 import android.os.Build
 import kotlinx.coroutines.CompletableDeferred
 
@@ -118,7 +119,26 @@ internal class BleHost(
     override suspend fun startScan(settings: ScanSettingsMessage) {
         adapter.requireOn()
         permissions.require(scanPermissions())
+        // Android 6 to 11 deliver no results while location is off, without
+        // any error. Say so instead of scanning in silence.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S && !isLocationEnabled()) {
+            throw VitalBluetoothError(
+                "locationServicesOff",
+                "Location services are off; Android needs them on to scan.",
+            )
+        }
         guardSecurity { scanner.start(settings) }
+    }
+
+    private fun isLocationEnabled(): Boolean {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager?
+            ?: return true
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            manager.isLocationEnabled
+        } else {
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        }
     }
 
     override fun stopScan() = scanner.stop()

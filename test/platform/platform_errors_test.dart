@@ -119,6 +119,13 @@ void main() {
       );
     });
 
+    test('locationServicesOff', () {
+      expect(
+        map('locationServicesOff'),
+        isA<LocationServicesDisabledException>(),
+      );
+    });
+
     test('bondingFailed', () {
       expect(map('bondingFailed'), isA<BondingFailedException>());
     });
