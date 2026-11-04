@@ -2,9 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vital_bluetooth_example/main.dart';
 
 void main() {
-  testWidgets('shows the app bar', (tester) async {
-    await tester.pumpWidget(const MyApp());
+  testWidgets('shows the scan page', (tester) async {
+    await tester.pumpWidget(const ExampleApp());
 
-    expect(find.text('vital_bluetooth example'), findsOneWidget);
+    expect(find.text('vital_bluetooth'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
   });
 }
