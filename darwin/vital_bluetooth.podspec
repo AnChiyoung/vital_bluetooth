@@ -4,11 +4,11 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'vital_bluetooth'
-  s.version          = '0.0.1'
-  s.summary          = 'Reliable Bluetooth LE and Classic plugin for wearables and healthcare devices.'
+  s.version          = '0.1.0'
+  s.summary          = 'Bluetooth LE for wearables and healthcare devices that stays connected in the background.'
   s.description      = <<-DESC
-Reliable Bluetooth LE and Classic plugin for wearables and healthcare devices,
-with queued GATT operations, auto-reconnect and multi-device support.
+Bluetooth LE for wearables and healthcare devices that stays connected in the
+background: native reconnects, restored notifications, queued GATT operations.
                        DESC
   s.homepage         = 'https://github.com/AnChiyoung/vital_bluetooth'
   s.license          = { :file => '../LICENSE' }

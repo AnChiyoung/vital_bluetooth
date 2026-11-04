@@ -1,17 +1,20 @@
-# vital_bluetooth_example
+# vital_bluetooth example
 
-Demonstrates how to use the vital_bluetooth plugin.
+Shows what vital_bluetooth does on a real device:
 
-## Getting Started
+- **Scan screen**: adapter state with a "Turn on" button, permission status
+  with a "Request" button, a background-mode switch, devices you opened
+  ("My devices", with live connection status) and nearby devices.
+- **Device screen**: connect and disconnect, MTU, RSSI and bonding, every
+  service and characteristic, with read, hex write and notifications.
 
-This project is a starting point for a Flutter application.
+Leaving the device screen keeps the connection. With background mode on,
+close the app, wait, and open it again: the device is still connected, and
+a message says how many values arrived while it was closed.
 
-A few resources to get you started if this is your first Flutter project:
+The code is in [lib/main.dart](lib/main.dart) and
+[lib/device_page.dart](lib/device_page.dart).
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run
+```

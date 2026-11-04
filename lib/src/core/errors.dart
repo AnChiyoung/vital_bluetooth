@@ -80,7 +80,7 @@ final class PermissionDeniedException extends VitalBluetoothException {
   final bool permanentlyDenied;
 }
 
-/// Location services are off, so Android 6 to 11 returns no scan results.
+/// Location services are off, so Android 7 to 11 returns no scan results.
 ///
 /// Those Android versions only deliver BLE scan results while the phone's
 /// location setting is on, even with the permission granted. Ask the user

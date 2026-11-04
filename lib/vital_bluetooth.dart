@@ -1,4 +1,5 @@
-/// Reliable Bluetooth LE and Classic for wearables and healthcare devices.
+/// Bluetooth LE for wearables and healthcare devices that stays connected,
+/// including in the background.
 ///
 /// Start with [VitalBluetooth]:
 ///
