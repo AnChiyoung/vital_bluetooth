@@ -1,38 +1,18 @@
 package dev.goodluckcy.vital_bluetooth
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
-import io.flutter.plugin.common.MethodChannel.MethodCallHandler
-import io.flutter.plugin.common.MethodChannel.Result
 
-/** VitalBluetoothPlugin */
-class VitalBluetoothPlugin :
-    FlutterPlugin,
-    MethodCallHandler {
-    // The MethodChannel that will the communication between Flutter and native Android
-    //
-    // This local reference serves to register the plugin with the Flutter Engine and unregister it
-    // when the Flutter Engine is detached from the Activity
-    private lateinit var channel: MethodChannel
-
-    override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(flutterPluginBinding.binaryMessenger, "vital_bluetooth")
-        channel.setMethodCallHandler(this)
-    }
-
-    override fun onMethodCall(
-        call: MethodCall,
-        result: Result
-    ) {
-        if (call.method == "getPlatformVersion") {
-            result.success("Android ${android.os.Build.VERSION.RELEASE}")
-        } else {
-            result.notImplemented()
-        }
+/** Registers the Pigeon host APIs with the Flutter engine. */
+class VitalBluetoothPlugin : FlutterPlugin {
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        val messenger = binding.binaryMessenger
+        BleHostApi.setUp(messenger, BleHost(BleFlutterApi(messenger)))
+        ClassicHostApi.setUp(messenger, ClassicHost(ClassicFlutterApi(messenger)))
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel.setMethodCallHandler(null)
+        val messenger = binding.binaryMessenger
+        BleHostApi.setUp(messenger, null)
+        ClassicHostApi.setUp(messenger, null)
     }
 }

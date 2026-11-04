@@ -1,27 +1,33 @@
 package dev.goodluckcy.vital_bluetooth
 
-import io.flutter.plugin.common.MethodCall
-import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.BinaryMessenger
+import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 /*
- * This demonstrates a simple unit test of the Kotlin portion of this plugin's implementation.
- *
- * Once you have built the plugin's example app, you can run these tests from the command
- * line by running `./gradlew testDebugUnitTest` in the `example/android/` directory, or
- * you can run them directly from IDEs that support JUnit such as Android Studio.
+ * Run with `./gradlew testDebugUnitTest` in example/android, or from
+ * Android Studio.
  */
-
 internal class VitalBluetoothPluginTest {
+    private val messenger = Mockito.mock(BinaryMessenger::class.java)
+
     @Test
-    fun onMethodCall_getPlatformVersion_returnsExpectedValue() {
-        val plugin = VitalBluetoothPlugin()
+    fun capabilities_reportEverythingAndroidSupports() {
+        val caps = BleHost(BleFlutterApi(messenger)).getCapabilities()
 
-        val call = MethodCall("getPlatformVersion", null)
-        val mockResult: MethodChannel.Result = Mockito.mock(MethodChannel.Result::class.java)
-        plugin.onMethodCall(call, mockResult)
+        assertTrue(caps.ble && caps.classic && caps.bonding && caps.connectionPriority && caps.phy)
+    }
 
-        Mockito.verify(mockResult).success("Android " + android.os.Build.VERSION.RELEASE)
+    @Test
+    fun unimplementedCalls_throwUnsupported() {
+        val error = assertFailsWith<VitalBluetoothError> {
+            runBlocking { BleHost(BleFlutterApi(messenger)).connect("AA:BB", false) }
+        }
+
+        assertEquals("unsupported", error.code)
     }
 }
