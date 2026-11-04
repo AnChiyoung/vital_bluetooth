@@ -1,4 +1,4 @@
-import Cocoa
+import CoreBluetooth
 import FlutterMacOS
 import XCTest
 
@@ -7,24 +7,24 @@ import XCTest
 
 @testable import vital_bluetooth
 
-// This demonstrates a simple unit test of the Swift portion of this plugin's implementation.
-//
-// See https://developer.apple.com/documentation/xctest for more information about using XCTest.
-
 class RunnerTests: XCTestCase {
 
-  func testGetPlatformVersion() {
-    let plugin = VitalBluetoothPlugin()
-
-    let call = FlutterMethodCall(methodName: "getPlatformVersion", arguments: [])
-
-    let resultExpectation = expectation(description: "result block must be called.")
-    plugin.handle(call) { result in
-      XCTAssertEqual(result as! String,
-                     "macOS " + ProcessInfo.processInfo.operatingSystemVersionString)
-      resultExpectation.fulfill()
-    }
-    waitForExpectations(timeout: 1)
+  func testShortUuidsBecomeFullLowercase() {
+    XCTAssertEqual(fullUuid(CBUUID(string: "180D")), "0000180d-0000-1000-8000-00805f9b34fb")
+    XCTAssertEqual(
+      fullUuid(CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")),
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e")
   }
 
+  func testAttErrorsKeepTheirStatus() {
+    let error = NSError(domain: CBATTErrorDomain, code: 5)
+    let mapped = mapError(error, deviceId: "AA")
+    XCTAssertEqual(mapped.code, "gattError")
+    XCTAssertEqual(mapped.details as? Int, 5)
+  }
+
+  func testConnectFailuresMapToConnectionFailed() {
+    let error = NSError(domain: CBErrorDomain, code: CBError.Code.connectionFailed.rawValue)
+    XCTAssertEqual(mapError(error, deviceId: "AA", connecting: true).code, "connectionFailed")
+  }
 }
