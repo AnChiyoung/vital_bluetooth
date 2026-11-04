@@ -116,8 +116,9 @@ class _ScanPageState extends State<ScanPage> {
 
   @override
   Widget build(BuildContext context) {
-    final results = _results.values.toList()
-      ..sort((a, b) => b.rssi.compareTo(a.rssi));
+    // Kept in the order devices were first seen. Sorting by RSSI would make
+    // rows jump around, because RSSI swings by several dBm every second.
+    final results = _results.values.toList();
     return Scaffold(
       appBar: AppBar(title: const Text('vital_bluetooth')),
       body: Column(
