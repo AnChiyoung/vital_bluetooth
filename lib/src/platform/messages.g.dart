@@ -1104,7 +1104,8 @@ class BleHostApi {
     return pigeonVar_replyValue! as AdapterStateMessage;
   }
 
-  /// Turns the adapter on. Android before 13 only; others throw unsupported.
+  /// Asks the user to turn Bluetooth on (Android shows the system prompt)
+  /// and completes once it is on. iOS, macOS and Windows throw unsupported.
   Future<void> turnOn() async {
     final pigeonVar_channelName =
         'dev.flutter.pigeon.vital_bluetooth.BleHostApi.turnOn$pigeonVar_messageChannelSuffix';

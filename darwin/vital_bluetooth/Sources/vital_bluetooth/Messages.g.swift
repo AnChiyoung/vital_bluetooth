@@ -1045,7 +1045,8 @@ class MessagesPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 protocol BleHostApi {
   func getCapabilities() throws -> CapabilitiesMessage
   func getAdapterState() throws -> AdapterStateMessage
-  /// Turns the adapter on. Android before 13 only; others throw unsupported.
+  /// Asks the user to turn Bluetooth on (Android shows the system prompt)
+  /// and completes once it is on. iOS, macOS and Windows throw unsupported.
   func turnOn() async throws
   func getPermissionStatus() throws -> PermissionStatusMessage
   func requestPermissions() async throws -> PermissionStatusMessage
@@ -1112,7 +1113,8 @@ class BleHostApiSetup {
     } else {
       getAdapterStateChannel.setMessageHandler(nil)
     }
-    /// Turns the adapter on. Android before 13 only; others throw unsupported.
+    /// Asks the user to turn Bluetooth on (Android shows the system prompt)
+    /// and completes once it is on. iOS, macOS and Windows throw unsupported.
     let turnOnChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.turnOn\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       turnOnChannel.setMessageHandler { _, reply in

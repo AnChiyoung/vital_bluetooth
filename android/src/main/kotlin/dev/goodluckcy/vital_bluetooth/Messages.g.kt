@@ -1129,7 +1129,10 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
 interface BleHostApi {
   fun getCapabilities(): CapabilitiesMessage
   fun getAdapterState(): AdapterStateMessage
-  /** Turns the adapter on. Android before 13 only; others throw unsupported. */
+  /**
+   * Asks the user to turn Bluetooth on (Android shows the system prompt)
+   * and completes once it is on. iOS, macOS and Windows throw unsupported.
+   */
   suspend fun turnOn()
   fun getPermissionStatus(): PermissionStatusMessage
   suspend fun requestPermissions(): PermissionStatusMessage

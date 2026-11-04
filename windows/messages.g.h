@@ -739,7 +739,8 @@ class BleHostApi {
   virtual ~BleHostApi() {}
   virtual ErrorOr<CapabilitiesMessage> GetCapabilities() = 0;
   virtual ErrorOr<AdapterStateMessage> GetAdapterState() = 0;
-  // Turns the adapter on. Android before 13 only; others throw unsupported.
+  // Asks the user to turn Bluetooth on (Android shows the system prompt)
+  // and completes once it is on. iOS, macOS and Windows throw unsupported.
   virtual void TurnOn(std::function<void(std::optional<FlutterError> reply)> result) = 0;
   virtual ErrorOr<PermissionStatusMessage> GetPermissionStatus() = 0;
   virtual void RequestPermissions(std::function<void(ErrorOr<PermissionStatusMessage> reply)> result) = 0;
