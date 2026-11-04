@@ -295,7 +295,10 @@ class _DeviceTile extends StatelessWidget {
                 : Icons.bluetooth,
             color: state.isReady ? Theme.of(context).colorScheme.primary : null,
           ),
-          title: Text(label),
+          title: ValueListenableBuilder(
+            valueListenable: device.name,
+            builder: (context, known, _) => Text(known ?? label),
+          ),
           subtitle: Text(
             connected ? '${device.id} · ${status.name}' : device.id,
           ),

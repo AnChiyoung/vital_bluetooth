@@ -37,7 +37,13 @@ class _DevicePageState extends State<DevicePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name ?? _device.id)),
+      appBar: AppBar(
+        title: ValueListenableBuilder(
+          valueListenable: _device.name,
+          builder: (context, name, _) =>
+              Text(name ?? widget.name ?? _device.id),
+        ),
+      ),
       body: ValueListenableBuilder(
         valueListenable: _device.connectionState,
         builder: (context, state, _) => Column(
