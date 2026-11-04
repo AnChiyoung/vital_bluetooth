@@ -1,11 +1,10 @@
 #if os(iOS)
 import Flutter
-import UIKit
 #elseif os(macOS)
-import Cocoa
 import FlutterMacOS
 #endif
 
+/// Registers the Pigeon host APIs with the Flutter engine.
 public class VitalBluetoothPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
     #if os(iOS)
@@ -13,21 +12,13 @@ public class VitalBluetoothPlugin: NSObject, FlutterPlugin {
     #else
     let messenger = registrar.messenger
     #endif
-    let channel = FlutterMethodChannel(name: "vital_bluetooth", binaryMessenger: messenger)
-    let instance = VitalBluetoothPlugin()
-    registrar.addMethodCallDelegate(instance, channel: channel)
-  }
-
-  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-    switch call.method {
-    case "getPlatformVersion":
-      #if os(iOS)
-      result("iOS " + UIDevice.current.systemVersion)
-      #else
-      result("macOS " + ProcessInfo.processInfo.operatingSystemVersionString)
-      #endif
-    default:
-      result(FlutterMethodNotImplemented)
-    }
+    BleHostApiSetup.setUp(
+      binaryMessenger: messenger,
+      api: BleHost(events: BleFlutterApi(binaryMessenger: messenger))
+    )
+    ClassicHostApiSetup.setUp(
+      binaryMessenger: messenger,
+      api: ClassicHost(events: ClassicFlutterApi(binaryMessenger: messenger))
+    )
   }
 }
