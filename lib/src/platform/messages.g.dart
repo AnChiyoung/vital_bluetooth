@@ -860,6 +860,112 @@ class PlatformErrorMessage {
   }
 }
 
+/// The text of the notification Android shows while background mode is on.
+class BackgroundNotificationMessage {
+  BackgroundNotificationMessage({required this.title, required this.text});
+
+  String title;
+
+  String text;
+
+  List<Object?> _toList() {
+    return <Object?>[title, text];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static BackgroundNotificationMessage decode(Object result) {
+    result as List<Object?>;
+    return BackgroundNotificationMessage(
+      title: result[0]! as String,
+      text: result[1]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! BackgroundNotificationMessage ||
+        other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(title, other.title) && _deepEquals(text, other.text);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'BackgroundNotificationMessage(title: $title, text: $text)';
+  }
+}
+
+/// A link the platform kept alive, for example while no Flutter engine
+/// was attached in background mode.
+class SessionMessage {
+  SessionMessage({
+    required this.deviceId,
+    required this.connected,
+    required this.subscribed,
+  });
+
+  String deviceId;
+
+  /// False while the platform is still reconnecting.
+  bool connected;
+
+  /// Characteristics with notifications on.
+  List<CharacteristicAddressMessage> subscribed;
+
+  List<Object?> _toList() {
+    return <Object?>[deviceId, connected, subscribed];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static SessionMessage decode(Object result) {
+    result as List<Object?>;
+    return SessionMessage(
+      deviceId: result[0]! as String,
+      connected: result[1]! as bool,
+      subscribed: (result[2]! as List<Object?>)
+          .cast<CharacteristicAddressMessage>(),
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! SessionMessage || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(deviceId, other.deviceId) &&
+        _deepEquals(connected, other.connected) &&
+        _deepEquals(subscribed, other.subscribed);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'SessionMessage(deviceId: $deviceId, connected: $connected, subscribed: $subscribed)';
+  }
+}
+
 class ClassicDeviceMessage {
   ClassicDeviceMessage({
     required this.deviceId,
@@ -987,8 +1093,14 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PlatformErrorMessage) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    } else if (value is ClassicDeviceMessage) {
+    } else if (value is BackgroundNotificationMessage) {
       buffer.putUint8(147);
+      writeValue(buffer, value.encode());
+    } else if (value is SessionMessage) {
+      buffer.putUint8(148);
+      writeValue(buffer, value.encode());
+    } else if (value is ClassicDeviceMessage) {
+      buffer.putUint8(149);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1042,6 +1154,10 @@ class _PigeonCodec extends StandardMessageCodec {
       case 146:
         return PlatformErrorMessage.decode(readValue(buffer)!);
       case 147:
+        return BackgroundNotificationMessage.decode(readValue(buffer)!);
+      case 148:
+        return SessionMessage.decode(readValue(buffer)!);
+      case 149:
         return ClassicDeviceMessage.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1581,6 +1697,135 @@ class BleHostApi {
       pigeonVar_channelName,
       isNullValid: true,
     );
+  }
+
+  /// Keeps links alive while the app is in the background or its UI is
+  /// closed. Android runs a foreground service with [notification]; links,
+  /// reconnects and notifications then live in native code, and values
+  /// that arrive with no engine attached are buffered. Other platforms
+  /// throw unsupported for now.
+  Future<void> enableBackgroundMode(
+    BackgroundNotificationMessage notification,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.enableBackgroundMode$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[notification],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+  }
+
+  Future<void> disableBackgroundMode() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.disableBackgroundMode$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+  }
+
+  Future<bool> isBackgroundModeEnabled() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.isBackgroundModeEnabled$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// The link the platform holds for [deviceId], if any. Calling it also
+  /// tells the platform that Dart now handles this device's values.
+  Future<SessionMessage?> getSession(String deviceId) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSession$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[deviceId],
+    );
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+    return pigeonVar_replyValue as SessionMessage?;
+  }
+
+  /// Every link the platform holds.
+  Future<List<SessionMessage>> getSessions() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSessions$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return (pigeonVar_replyValue! as List<Object?>).cast<SessionMessage>();
+  }
+
+  /// Values received while no Dart code was handling the device, oldest
+  /// first. They are removed from the buffer.
+  Future<List<CharacteristicValueMessage>> takeBufferedValues() async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.vital_bluetooth.BleHostApi.takeBufferedValues$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return (pigeonVar_replyValue! as List<Object?>)
+        .cast<CharacteristicValueMessage>();
   }
 }
 

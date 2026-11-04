@@ -829,6 +829,98 @@ struct PlatformErrorMessage: Hashable, CustomStringConvertible {
   }
 }
 
+/// The text of the notification Android shows while background mode is on.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct BackgroundNotificationMessage: Hashable, CustomStringConvertible {
+  var title: String
+  var text: String
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> BackgroundNotificationMessage? {
+    let title = pigeonVar_list[0] as! String
+    let text = pigeonVar_list[1] as! String
+
+    return BackgroundNotificationMessage(
+      title: title,
+      text: text
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      title,
+      text,
+    ]
+  }
+  static func == (lhs: BackgroundNotificationMessage, rhs: BackgroundNotificationMessage) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.title, rhs.title) && MessagesPigeonInternal.deepEquals(lhs.text, rhs.text)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("BackgroundNotificationMessage")
+    MessagesPigeonInternal.deepHash(value: title, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: text, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "BackgroundNotificationMessage(title: \(String(describing: title)), text: \(String(describing: text)))"
+  }
+}
+
+/// A link the platform kept alive, for example while no Flutter engine
+/// was attached in background mode.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct SessionMessage: Hashable, CustomStringConvertible {
+  var deviceId: String
+  /// False while the platform is still reconnecting.
+  var connected: Bool
+  /// Characteristics with notifications on.
+  var subscribed: [CharacteristicAddressMessage]
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> SessionMessage? {
+    let deviceId = pigeonVar_list[0] as! String
+    let connected = pigeonVar_list[1] as! Bool
+    let subscribed = pigeonVar_list[2] as! [CharacteristicAddressMessage]
+
+    return SessionMessage(
+      deviceId: deviceId,
+      connected: connected,
+      subscribed: subscribed
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      deviceId,
+      connected,
+      subscribed,
+    ]
+  }
+  static func == (lhs: SessionMessage, rhs: SessionMessage) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.deviceId, rhs.deviceId) && MessagesPigeonInternal.deepEquals(lhs.connected, rhs.connected) && MessagesPigeonInternal.deepEquals(lhs.subscribed, rhs.subscribed)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("SessionMessage")
+    MessagesPigeonInternal.deepHash(value: deviceId, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: connected, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: subscribed, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "SessionMessage(deviceId: \(String(describing: deviceId)), connected: \(String(describing: connected)), subscribed: \(String(describing: subscribed)))"
+  }
+}
+
 /// Generated class from Pigeon that represents data sent in messages.
 struct ClassicDeviceMessage: Hashable, CustomStringConvertible {
   var deviceId: String
@@ -954,6 +1046,10 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
     case 146:
       return PlatformErrorMessage.fromList(self.readValue() as! [Any?])
     case 147:
+      return BackgroundNotificationMessage.fromList(self.readValue() as! [Any?])
+    case 148:
+      return SessionMessage.fromList(self.readValue() as! [Any?])
+    case 149:
       return ClassicDeviceMessage.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -1017,8 +1113,14 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? PlatformErrorMessage {
       super.writeByte(146)
       super.writeValue(value.toList())
-    } else if let value = value as? ClassicDeviceMessage {
+    } else if let value = value as? BackgroundNotificationMessage {
       super.writeByte(147)
+      super.writeValue(value.toList())
+    } else if let value = value as? SessionMessage {
+      super.writeByte(148)
+      super.writeValue(value.toList())
+    } else if let value = value as? ClassicDeviceMessage {
+      super.writeByte(149)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -1079,6 +1181,22 @@ protocol BleHostApi {
   func getBondState(deviceId: String) throws -> BondStateMessage
   func createBond(deviceId: String) async throws
   func removeBond(deviceId: String) async throws
+  /// Keeps links alive while the app is in the background or its UI is
+  /// closed. Android runs a foreground service with [notification]; links,
+  /// reconnects and notifications then live in native code, and values
+  /// that arrive with no engine attached are buffered. Other platforms
+  /// throw unsupported for now.
+  func enableBackgroundMode(notification: BackgroundNotificationMessage) async throws
+  func disableBackgroundMode() throws
+  func isBackgroundModeEnabled() throws -> Bool
+  /// The link the platform holds for [deviceId], if any. Calling it also
+  /// tells the platform that Dart now handles this device's values.
+  func getSession(deviceId: String) throws -> SessionMessage?
+  /// Every link the platform holds.
+  func getSessions() throws -> [SessionMessage]
+  /// Values received while no Dart code was handling the device, oldest
+  /// first. They are removed from the buffer.
+  func takeBufferedValues() throws -> [CharacteristicValueMessage]
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -1494,6 +1612,100 @@ class BleHostApiSetup {
       }
     } else {
       removeBondChannel.setMessageHandler(nil)
+    }
+    /// Keeps links alive while the app is in the background or its UI is
+    /// closed. Android runs a foreground service with [notification]; links,
+    /// reconnects and notifications then live in native code, and values
+    /// that arrive with no engine attached are buffered. Other platforms
+    /// throw unsupported for now.
+    let enableBackgroundModeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.enableBackgroundMode\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      enableBackgroundModeChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let notificationArg = args[0] as! BackgroundNotificationMessage
+        Task { @MainActor in
+          do {
+            try await api.enableBackgroundMode(notification: notificationArg)
+            reply(wrapResult(nil))
+          } catch {
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      enableBackgroundModeChannel.setMessageHandler(nil)
+    }
+    let disableBackgroundModeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.disableBackgroundMode\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      disableBackgroundModeChannel.setMessageHandler { _, reply in
+        do {
+          try api.disableBackgroundMode()
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      disableBackgroundModeChannel.setMessageHandler(nil)
+    }
+    let isBackgroundModeEnabledChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.isBackgroundModeEnabled\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      isBackgroundModeEnabledChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.isBackgroundModeEnabled()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      isBackgroundModeEnabledChannel.setMessageHandler(nil)
+    }
+    /// The link the platform holds for [deviceId], if any. Calling it also
+    /// tells the platform that Dart now handles this device's values.
+    let getSessionChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSession\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getSessionChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let deviceIdArg = args[0] as! String
+        do {
+          let result = try api.getSession(deviceId: deviceIdArg)
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      getSessionChannel.setMessageHandler(nil)
+    }
+    /// Every link the platform holds.
+    let getSessionsChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSessions\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getSessionsChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.getSessions()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      getSessionsChannel.setMessageHandler(nil)
+    }
+    /// Values received while no Dart code was handling the device, oldest
+    /// first. They are removed from the buffer.
+    let takeBufferedValuesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.vital_bluetooth.BleHostApi.takeBufferedValues\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      takeBufferedValuesChannel.setMessageHandler { _, reply in
+        do {
+          let result = try api.takeBufferedValues()
+          reply(wrapResult(result))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      takeBufferedValuesChannel.setMessageHandler(nil)
     }
   }
 }

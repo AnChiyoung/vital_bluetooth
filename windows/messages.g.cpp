@@ -1616,6 +1616,166 @@ size_t PigeonInternalDeepHash(const PlatformErrorMessage& v) {
   return v.Hash();
 }
 
+// BackgroundNotificationMessage
+
+BackgroundNotificationMessage::BackgroundNotificationMessage(
+  const std::string& title,
+  const std::string& text)
+ : title_(title),
+    text_(text) {}
+
+const std::string& BackgroundNotificationMessage::title() const {
+  return title_;
+}
+
+void BackgroundNotificationMessage::set_title(std::string_view value_arg) {
+  title_ = value_arg;
+}
+
+
+const std::string& BackgroundNotificationMessage::text() const {
+  return text_;
+}
+
+void BackgroundNotificationMessage::set_text(std::string_view value_arg) {
+  text_ = value_arg;
+}
+
+
+EncodableList BackgroundNotificationMessage::ToEncodableList() const {
+  EncodableList list;
+  list.reserve(2);
+  list.push_back(EncodableValue(title_));
+  list.push_back(EncodableValue(text_));
+  return list;
+}
+
+BackgroundNotificationMessage BackgroundNotificationMessage::FromEncodableList(const EncodableList& list) {
+  BackgroundNotificationMessage decoded(
+    std::get<std::string>(list[0]),
+    std::get<std::string>(list[1]));
+  return decoded;
+}
+
+bool BackgroundNotificationMessage::operator==(const BackgroundNotificationMessage& other) const {
+  return PigeonInternalDeepEquals(title_, other.title_) && PigeonInternalDeepEquals(text_, other.text_);
+}
+
+bool BackgroundNotificationMessage::operator!=(const BackgroundNotificationMessage& other) const {
+  return !(*this == other);
+}
+
+size_t BackgroundNotificationMessage::Hash() const {
+  size_t result = 1;
+  result = result * 31 + PigeonInternalDeepHash(title_);
+  result = result * 31 + PigeonInternalDeepHash(text_);
+  return result;
+}
+
+std::ostream& operator<<(
+  std::ostream& os,
+  const BackgroundNotificationMessage& obj) {
+  os << "BackgroundNotificationMessage(";
+  os << "title: ";
+  os << PigeonInternalToString(obj.title_);
+  os << ", text: ";
+  os << PigeonInternalToString(obj.text_);
+  os << ")";
+  return os;
+}
+
+size_t PigeonInternalDeepHash(const BackgroundNotificationMessage& v) {
+  return v.Hash();
+}
+
+// SessionMessage
+
+SessionMessage::SessionMessage(
+  const std::string& device_id,
+  bool connected,
+  const EncodableList& subscribed)
+ : device_id_(device_id),
+    connected_(connected),
+    subscribed_(subscribed) {}
+
+const std::string& SessionMessage::device_id() const {
+  return device_id_;
+}
+
+void SessionMessage::set_device_id(std::string_view value_arg) {
+  device_id_ = value_arg;
+}
+
+
+bool SessionMessage::connected() const {
+  return connected_;
+}
+
+void SessionMessage::set_connected(bool value_arg) {
+  connected_ = value_arg;
+}
+
+
+const EncodableList& SessionMessage::subscribed() const {
+  return subscribed_;
+}
+
+void SessionMessage::set_subscribed(const EncodableList& value_arg) {
+  subscribed_ = value_arg;
+}
+
+
+EncodableList SessionMessage::ToEncodableList() const {
+  EncodableList list;
+  list.reserve(3);
+  list.push_back(EncodableValue(device_id_));
+  list.push_back(EncodableValue(connected_));
+  list.push_back(EncodableValue(subscribed_));
+  return list;
+}
+
+SessionMessage SessionMessage::FromEncodableList(const EncodableList& list) {
+  SessionMessage decoded(
+    std::get<std::string>(list[0]),
+    std::get<bool>(list[1]),
+    std::get<EncodableList>(list[2]));
+  return decoded;
+}
+
+bool SessionMessage::operator==(const SessionMessage& other) const {
+  return PigeonInternalDeepEquals(device_id_, other.device_id_) && PigeonInternalDeepEquals(connected_, other.connected_) && PigeonInternalDeepEquals(subscribed_, other.subscribed_);
+}
+
+bool SessionMessage::operator!=(const SessionMessage& other) const {
+  return !(*this == other);
+}
+
+size_t SessionMessage::Hash() const {
+  size_t result = 1;
+  result = result * 31 + PigeonInternalDeepHash(device_id_);
+  result = result * 31 + PigeonInternalDeepHash(connected_);
+  result = result * 31 + PigeonInternalDeepHash(subscribed_);
+  return result;
+}
+
+std::ostream& operator<<(
+  std::ostream& os,
+  const SessionMessage& obj) {
+  os << "SessionMessage(";
+  os << "device_id: ";
+  os << PigeonInternalToString(obj.device_id_);
+  os << ", connected: ";
+  os << PigeonInternalToString(obj.connected_);
+  os << ", subscribed: ";
+  os << PigeonInternalToString(obj.subscribed_);
+  os << ")";
+  return os;
+}
+
+size_t PigeonInternalDeepHash(const SessionMessage& v) {
+  return v.Hash();
+}
+
 // ClassicDeviceMessage
 
 ClassicDeviceMessage::ClassicDeviceMessage(
@@ -1854,6 +2014,12 @@ EncodableValue PigeonInternalCodecSerializer::ReadValueOfType(
         return CustomEncodableValue(PlatformErrorMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     case 147: {
+        return CustomEncodableValue(BackgroundNotificationMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 148: {
+        return CustomEncodableValue(SessionMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
+      }
+    case 149: {
         return CustomEncodableValue(ClassicDeviceMessage::FromEncodableList(std::get<EncodableList>(ReadValue(stream))));
       }
     default:
@@ -1955,8 +2121,18 @@ void PigeonInternalCodecSerializer::WriteValue(
       WriteValue(EncodableValue(std::any_cast<PlatformErrorMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
-    if (custom_value->type() == typeid(ClassicDeviceMessage)) {
+    if (custom_value->type() == typeid(BackgroundNotificationMessage)) {
       stream->WriteByte(147);
+      WriteValue(EncodableValue(std::any_cast<BackgroundNotificationMessage>(*custom_value).ToEncodableList()), stream);
+      return;
+    }
+    if (custom_value->type() == typeid(SessionMessage)) {
+      stream->WriteByte(148);
+      WriteValue(EncodableValue(std::any_cast<SessionMessage>(*custom_value).ToEncodableList()), stream);
+      return;
+    }
+    if (custom_value->type() == typeid(ClassicDeviceMessage)) {
+      stream->WriteByte(149);
       WriteValue(EncodableValue(std::any_cast<ClassicDeviceMessage>(*custom_value).ToEncodableList()), stream);
       return;
     }
@@ -2693,6 +2869,152 @@ void BleHostApi::SetUp(
             wrapped.push_back(EncodableValue());
             reply(EncodableValue(std::move(wrapped)));
           });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.enableBackgroundMode" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_notification_arg = args.at(0);
+          if (encodable_notification_arg.IsNull()) {
+            reply(WrapError("notification_arg unexpectedly null."));
+            return;
+          }
+          const auto& notification_arg = std::any_cast<const BackgroundNotificationMessage&>(std::get<CustomEncodableValue>(encodable_notification_arg));
+          api->EnableBackgroundMode(notification_arg, [reply](std::optional<FlutterError>&& output) {
+            if (output.has_value()) {
+              reply(WrapError(output.value()));
+              return;
+            }
+            EncodableList wrapped;
+            wrapped.push_back(EncodableValue());
+            reply(EncodableValue(std::move(wrapped)));
+          });
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.disableBackgroundMode" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          std::optional<FlutterError> output = api->DisableBackgroundMode();
+          if (output.has_value()) {
+            reply(WrapError(output.value()));
+            return;
+          }
+          EncodableList wrapped;
+          wrapped.push_back(EncodableValue());
+          reply(EncodableValue(std::move(wrapped)));
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.isBackgroundModeEnabled" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          ErrorOr<bool> output = api->IsBackgroundModeEnabled();
+          if (output.has_error()) {
+            reply(WrapError(output.error()));
+            return;
+          }
+          EncodableList wrapped;
+          wrapped.push_back(EncodableValue(std::move(output).TakeValue()));
+          reply(EncodableValue(std::move(wrapped)));
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSession" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          const auto& args = std::get<EncodableList>(message);
+          const auto& encodable_device_id_arg = args.at(0);
+          if (encodable_device_id_arg.IsNull()) {
+            reply(WrapError("device_id_arg unexpectedly null."));
+            return;
+          }
+          const auto& device_id_arg = std::get<std::string>(encodable_device_id_arg);
+          ErrorOr<std::optional<SessionMessage>> output = api->GetSession(device_id_arg);
+          if (output.has_error()) {
+            reply(WrapError(output.error()));
+            return;
+          }
+          EncodableList wrapped;
+          auto output_optional = std::move(output).TakeValue();
+          if (output_optional) {
+            wrapped.push_back(CustomEncodableValue(std::move(output_optional).value()));
+          } else {
+            wrapped.push_back(EncodableValue());
+          }
+          reply(EncodableValue(std::move(wrapped)));
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSessions" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          ErrorOr<EncodableList> output = api->GetSessions();
+          if (output.has_error()) {
+            reply(WrapError(output.error()));
+            return;
+          }
+          EncodableList wrapped;
+          wrapped.push_back(EncodableValue(std::move(output).TakeValue()));
+          reply(EncodableValue(std::move(wrapped)));
+        } catch (const std::exception& exception) {
+          reply(WrapError(exception.what()));
+        }
+      });
+    } else {
+      channel.SetMessageHandler(nullptr);
+    }
+  }
+  {
+    BasicMessageChannel<> channel(binary_messenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.takeBufferedValues" + prepended_suffix, &GetCodec());
+    if (api != nullptr) {
+      channel.SetMessageHandler([api](const EncodableValue& message, const ::flutter::MessageReply<EncodableValue>& reply) {
+        try {
+          ErrorOr<EncodableList> output = api->TakeBufferedValues();
+          if (output.has_error()) {
+            reply(WrapError(output.error()));
+            return;
+          }
+          EncodableList wrapped;
+          wrapped.push_back(EncodableValue(std::move(output).TakeValue()));
+          reply(EncodableValue(std::move(wrapped)));
         } catch (const std::exception& exception) {
           reply(WrapError(exception.what()));
         }

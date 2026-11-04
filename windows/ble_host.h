@@ -84,6 +84,15 @@ class BleHost : public BleHostApi {
   void RemoveBond(
       const std::string& device_id,
       std::function<void(std::optional<FlutterError> reply)> result) override;
+  void EnableBackgroundMode(
+      const BackgroundNotificationMessage& notification,
+      std::function<void(std::optional<FlutterError> reply)> result) override;
+  std::optional<FlutterError> DisableBackgroundMode() override;
+  ErrorOr<bool> IsBackgroundModeEnabled() override;
+  ErrorOr<std::optional<SessionMessage>> GetSession(
+      const std::string& device_id) override;
+  ErrorOr<flutter::EncodableList> GetSessions() override;
+  ErrorOr<flutter::EncodableList> TakeBufferedValues() override;
 
  private:
   BleFlutterApi* events_;

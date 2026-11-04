@@ -656,6 +656,84 @@ class PlatformErrorMessage {
 };
 
 
+// The text of the notification Android shows while background mode is on.
+//
+// Generated class from Pigeon that represents data sent in messages.
+class BackgroundNotificationMessage {
+ public:
+  // Constructs an object setting all fields.
+  explicit BackgroundNotificationMessage(
+    const std::string& title,
+    const std::string& text);
+
+  const std::string& title() const;
+  void set_title(std::string_view value_arg);
+
+  const std::string& text() const;
+  void set_text(std::string_view value_arg);
+
+  bool operator==(const BackgroundNotificationMessage& other) const;
+  bool operator!=(const BackgroundNotificationMessage& other) const;
+  /// Returns a hash code value for the object. This method is supported for the benefit of hash tables.
+  size_t Hash() const;
+  /// Stream output operator for formatted string representation.
+  friend std::ostream& operator<<(std::ostream& os, const BackgroundNotificationMessage& obj);
+ private:
+  static BackgroundNotificationMessage FromEncodableList(const ::flutter::EncodableList& list);
+  ::flutter::EncodableList ToEncodableList() const;
+  friend class BleHostApi;
+  friend class BleFlutterApi;
+  friend class ClassicHostApi;
+  friend class ClassicFlutterApi;
+  friend class PigeonInternalCodecSerializer;
+  std::string title_;
+  std::string text_;
+};
+
+
+// A link the platform kept alive, for example while no Flutter engine
+// was attached in background mode.
+//
+// Generated class from Pigeon that represents data sent in messages.
+class SessionMessage {
+ public:
+  // Constructs an object setting all fields.
+  explicit SessionMessage(
+    const std::string& device_id,
+    bool connected,
+    const ::flutter::EncodableList& subscribed);
+
+  const std::string& device_id() const;
+  void set_device_id(std::string_view value_arg);
+
+  // False while the platform is still reconnecting.
+  bool connected() const;
+  void set_connected(bool value_arg);
+
+  // Characteristics with notifications on.
+  const ::flutter::EncodableList& subscribed() const;
+  void set_subscribed(const ::flutter::EncodableList& value_arg);
+
+  bool operator==(const SessionMessage& other) const;
+  bool operator!=(const SessionMessage& other) const;
+  /// Returns a hash code value for the object. This method is supported for the benefit of hash tables.
+  size_t Hash() const;
+  /// Stream output operator for formatted string representation.
+  friend std::ostream& operator<<(std::ostream& os, const SessionMessage& obj);
+ private:
+  static SessionMessage FromEncodableList(const ::flutter::EncodableList& list);
+  ::flutter::EncodableList ToEncodableList() const;
+  friend class BleHostApi;
+  friend class BleFlutterApi;
+  friend class ClassicHostApi;
+  friend class ClassicFlutterApi;
+  friend class PigeonInternalCodecSerializer;
+  std::string device_id_;
+  bool connected_;
+  ::flutter::EncodableList subscribed_;
+};
+
+
 // Generated class from Pigeon that represents data sent in messages.
 class ClassicDeviceMessage {
  public:
@@ -818,6 +896,24 @@ class BleHostApi {
   virtual void RemoveBond(
     const std::string& device_id,
     std::function<void(std::optional<FlutterError> reply)> result) = 0;
+  // Keeps links alive while the app is in the background or its UI is
+  // closed. Android runs a foreground service with [notification]; links,
+  // reconnects and notifications then live in native code, and values
+  // that arrive with no engine attached are buffered. Other platforms
+  // throw unsupported for now.
+  virtual void EnableBackgroundMode(
+    const BackgroundNotificationMessage& notification,
+    std::function<void(std::optional<FlutterError> reply)> result) = 0;
+  virtual std::optional<FlutterError> DisableBackgroundMode() = 0;
+  virtual ErrorOr<bool> IsBackgroundModeEnabled() = 0;
+  // The link the platform holds for [deviceId], if any. Calling it also
+  // tells the platform that Dart now handles this device's values.
+  virtual ErrorOr<std::optional<SessionMessage>> GetSession(const std::string& device_id) = 0;
+  // Every link the platform holds.
+  virtual ErrorOr<::flutter::EncodableList> GetSessions() = 0;
+  // Values received while no Dart code was handling the device, oldest
+  // first. They are removed from the buffer.
+  virtual ErrorOr<::flutter::EncodableList> TakeBufferedValues() = 0;
 
   // The codec used by BleHostApi.
   static const ::flutter::StandardMessageCodec& GetCodec();

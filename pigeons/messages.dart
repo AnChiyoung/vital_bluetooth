@@ -281,6 +281,32 @@ class PlatformErrorMessage {
   String? platformCode;
 }
 
+/// The text of the notification Android shows while background mode is on.
+class BackgroundNotificationMessage {
+  BackgroundNotificationMessage({required this.title, required this.text});
+
+  String title;
+  String text;
+}
+
+/// A link the platform kept alive, for example while no Flutter engine
+/// was attached in background mode.
+class SessionMessage {
+  SessionMessage({
+    required this.deviceId,
+    required this.connected,
+    required this.subscribed,
+  });
+
+  String deviceId;
+
+  /// False while the platform is still reconnecting.
+  bool connected;
+
+  /// Characteristics with notifications on.
+  List<CharacteristicAddressMessage> subscribed;
+}
+
 @HostApi()
 abstract class BleHostApi {
   CapabilitiesMessage getCapabilities();
@@ -374,6 +400,29 @@ abstract class BleHostApi {
 
   @async
   void removeBond(String deviceId);
+
+  /// Keeps links alive while the app is in the background or its UI is
+  /// closed. Android runs a foreground service with [notification]; links,
+  /// reconnects and notifications then live in native code, and values
+  /// that arrive with no engine attached are buffered. Other platforms
+  /// throw unsupported for now.
+  @async
+  void enableBackgroundMode(BackgroundNotificationMessage notification);
+
+  void disableBackgroundMode();
+
+  bool isBackgroundModeEnabled();
+
+  /// The link the platform holds for [deviceId], if any. Calling it also
+  /// tells the platform that Dart now handles this device's values.
+  SessionMessage? getSession(String deviceId);
+
+  /// Every link the platform holds.
+  List<SessionMessage> getSessions();
+
+  /// Values received while no Dart code was handling the device, oldest
+  /// first. They are removed from the buffer.
+  List<CharacteristicValueMessage> takeBufferedValues();
 }
 
 @FlutterApi()

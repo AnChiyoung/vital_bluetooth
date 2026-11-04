@@ -108,6 +108,16 @@ final class BleHost: BleHostApi {
   func removeBond(deviceId: String) async throws {
     throw unsupported("Bonds can only be removed in the system settings.")
   }
+
+  func enableBackgroundMode(notification: BackgroundNotificationMessage) async throws {
+    throw notImplemented()
+  }
+
+  func disableBackgroundMode() throws {}
+  func isBackgroundModeEnabled() throws -> Bool { false }
+  func getSession(deviceId: String) throws -> SessionMessage? { nil }
+  func getSessions() throws -> [SessionMessage] { [] }
+  func takeBufferedValues() throws -> [CharacteristicValueMessage] { [] }
 }
 
 func unsupported(_ message: String) -> VitalBluetoothError {

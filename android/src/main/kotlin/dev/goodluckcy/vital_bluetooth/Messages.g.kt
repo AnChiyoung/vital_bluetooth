@@ -886,6 +886,103 @@ data class PlatformErrorMessage (
   }
 }
 
+/**
+ * The text of the notification Android shows while background mode is on.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class BackgroundNotificationMessage (
+  val title: String,
+  val text: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): BackgroundNotificationMessage {
+      val title = pigeonVar_list[0] as String
+      val text = pigeonVar_list[1] as String
+      return BackgroundNotificationMessage(title, text)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      title,
+      text,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as BackgroundNotificationMessage
+    return MessagesPigeonUtils.deepEquals(this.title, other.title) && MessagesPigeonUtils.deepEquals(this.text, other.text)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.title)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.text)
+    return result
+  }
+  override fun toString(): String {
+    return "BackgroundNotificationMessage(title=$title, text=$text)"
+  }
+}
+
+/**
+ * A link the platform kept alive, for example while no Flutter engine
+ * was attached in background mode.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class SessionMessage (
+  val deviceId: String,
+  /** False while the platform is still reconnecting. */
+  val connected: Boolean,
+  /** Characteristics with notifications on. */
+  val subscribed: List<CharacteristicAddressMessage>
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): SessionMessage {
+      val deviceId = pigeonVar_list[0] as String
+      val connected = pigeonVar_list[1] as Boolean
+      val subscribed = pigeonVar_list[2] as List<CharacteristicAddressMessage>
+      return SessionMessage(deviceId, connected, subscribed)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      deviceId,
+      connected,
+      subscribed,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as SessionMessage
+    return MessagesPigeonUtils.deepEquals(this.deviceId, other.deviceId) && MessagesPigeonUtils.deepEquals(this.connected, other.connected) && MessagesPigeonUtils.deepEquals(this.subscribed, other.subscribed)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.deviceId)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.connected)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.subscribed)
+    return result
+  }
+  override fun toString(): String {
+    return "SessionMessage(deviceId=$deviceId, connected=$connected, subscribed=$subscribed)"
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class ClassicDeviceMessage (
   val deviceId: String,
@@ -1035,6 +1132,16 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
       }
       147.toByte() -> {
         (readValue(buffer) as? List<Any?>)?.let {
+          BackgroundNotificationMessage.fromList(it)
+        }
+      }
+      148.toByte() -> {
+        (readValue(buffer) as? List<Any?>)?.let {
+          SessionMessage.fromList(it)
+        }
+      }
+      149.toByte() -> {
+        (readValue(buffer) as? List<Any?>)?.let {
           ClassicDeviceMessage.fromList(it)
         }
       }
@@ -1115,8 +1222,16 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is ClassicDeviceMessage -> {
+      is BackgroundNotificationMessage -> {
         stream.write(147)
+        writeValue(stream, value.toList())
+      }
+      is SessionMessage -> {
+        stream.write(148)
+        writeValue(stream, value.toList())
+      }
+      is ClassicDeviceMessage -> {
+        stream.write(149)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1171,6 +1286,28 @@ interface BleHostApi {
   fun getBondState(deviceId: String): BondStateMessage
   suspend fun createBond(deviceId: String)
   suspend fun removeBond(deviceId: String)
+  /**
+   * Keeps links alive while the app is in the background or its UI is
+   * closed. Android runs a foreground service with [notification]; links,
+   * reconnects and notifications then live in native code, and values
+   * that arrive with no engine attached are buffered. Other platforms
+   * throw unsupported for now.
+   */
+  suspend fun enableBackgroundMode(notification: BackgroundNotificationMessage)
+  fun disableBackgroundMode()
+  fun isBackgroundModeEnabled(): Boolean
+  /**
+   * The link the platform holds for [deviceId], if any. Calling it also
+   * tells the platform that Dart now handles this device's values.
+   */
+  fun getSession(deviceId: String): SessionMessage?
+  /** Every link the platform holds. */
+  fun getSessions(): List<SessionMessage>
+  /**
+   * Values received while no Dart code was handling the device, oldest
+   * first. They are removed from the buffer.
+   */
+  fun takeBufferedValues(): List<CharacteristicValueMessage>
 
   companion object {
     /** The codec used by BleHostApi. */
@@ -1632,6 +1769,104 @@ interface BleHostApi {
               }
               reply.reply(wrapped)
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.enableBackgroundMode$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val notificationArg = args[0] as BackgroundNotificationMessage
+            CoroutineScope(Dispatchers.Main).launch {
+              val wrapped: List<Any?> = try {
+                api.enableBackgroundMode(notificationArg)
+                listOf(null)
+              } catch (exception: Throwable) {
+                MessagesPigeonUtils.wrapError(exception)
+              }
+              reply.reply(wrapped)
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.disableBackgroundMode$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.disableBackgroundMode()
+              listOf(null)
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.isBackgroundModeEnabled$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.isBackgroundModeEnabled())
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSession$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val deviceIdArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              listOf(api.getSession(deviceIdArg))
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.getSessions$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.getSessions())
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.vital_bluetooth.BleHostApi.takeBufferedValues$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.takeBufferedValues())
+            } catch (exception: Throwable) {
+              MessagesPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

@@ -147,4 +147,29 @@ void BleHost::RemoveBond(
   result(NotImplemented());
 }
 
+void BleHost::EnableBackgroundMode(
+    const BackgroundNotificationMessage& notification,
+    std::function<void(std::optional<FlutterError> reply)> result) {
+  result(NotImplemented());
+}
+
+std::optional<FlutterError> BleHost::DisableBackgroundMode() {
+  return std::nullopt;
+}
+
+ErrorOr<bool> BleHost::IsBackgroundModeEnabled() { return false; }
+
+ErrorOr<std::optional<SessionMessage>> BleHost::GetSession(
+    const std::string& device_id) {
+  return std::optional<SessionMessage>();
+}
+
+ErrorOr<flutter::EncodableList> BleHost::GetSessions() {
+  return flutter::EncodableList();
+}
+
+ErrorOr<flutter::EncodableList> BleHost::TakeBufferedValues() {
+  return flutter::EncodableList();
+}
+
 }  // namespace vital_bluetooth
