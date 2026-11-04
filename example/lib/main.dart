@@ -39,12 +39,65 @@ class _ScanPageState extends State<ScanPage> {
   final _myDevices = <String, (BluetoothDevice, String?)>{};
   StreamSubscription<ScanResult>? _scan;
   PermissionStatus? _permission;
+  bool _background = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    // Wearables should stay connected: keep reconnecting with no limit.
+    _bluetooth.defaultOptions = const ConnectionOptions(
+      reconnect: ReconnectPolicy.unlimited(),
+    );
     _checkPermission();
+    _restore();
+  }
+
+  /// Picks up links that background mode kept alive while the app was
+  /// closed, and reports what arrived meanwhile.
+  Future<void> _restore() async {
+    try {
+      final background = await _bluetooth.isBackgroundModeEnabled();
+      final devices = await _bluetooth.restoreDevices();
+      final values = await _bluetooth.takeBackgroundValues();
+      if (!mounted) return;
+      setState(() {
+        _background = background;
+        for (final d in devices) {
+          _myDevices[d.id] = (d, null);
+        }
+      });
+      if (values.isNotEmpty) {
+        final first = values.first.timestamp;
+        final last = values.last.timestamp;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${values.length} values arrived while the app was closed '
+              '(${_time(first)} - ${_time(last)})',
+            ),
+          ),
+        );
+      }
+    } on VitalBluetoothException catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _setBackground(bool enable) async {
+    try {
+      if (enable) {
+        await _bluetooth.enableBackgroundMode(
+          title: 'vital_bluetooth',
+          text: 'Keeping Bluetooth devices connected',
+        );
+      } else {
+        await _bluetooth.disableBackgroundMode();
+      }
+      if (mounted) setState(() => _background = enable);
+    } on VitalBluetoothException catch (e) {
+      _showError(e);
+    }
   }
 
   @override
@@ -144,6 +197,13 @@ class _ScanPageState extends State<ScanPage> {
                     onPressed: _requestPermission,
                     child: const Text('Request'),
                   ),
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.nightlight_round),
+            title: const Text('Background mode'),
+            subtitle: const Text('Stay connected after the app is closed'),
+            value: _background,
+            onChanged: _setBackground,
           ),
           if (_error != null)
             Padding(
@@ -247,3 +307,8 @@ class _DeviceTile extends StatelessWidget {
     );
   }
 }
+
+String _time(DateTime t) =>
+    '${t.hour.toString().padLeft(2, '0')}:'
+    '${t.minute.toString().padLeft(2, '0')}:'
+    '${t.second.toString().padLeft(2, '0')}';
