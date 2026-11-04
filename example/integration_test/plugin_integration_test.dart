@@ -1,24 +1,16 @@
-// This is a basic Flutter integration test.
-//
-// Since integration tests run in a full Flutter application, they can interact
-// with the host side of a plugin implementation, unlike Dart unit tests.
-//
-// For more information about Flutter integration tests, please see
+// Runs on a real device or emulator, so it talks to the native side.
 // https://flutter.dev/to/integration-testing
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-
 import 'package:vital_bluetooth/vital_bluetooth.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('getPlatformVersion test', (WidgetTester tester) async {
-    final VitalBluetooth plugin = VitalBluetooth();
-    final String? version = await plugin.getPlatformVersion();
-    // The version string depends on the host platform running the test, so
-    // just assert that some non-empty string is returned.
-    expect(version?.isNotEmpty, true);
+  testWidgets('the platform answers getCapabilities', (tester) async {
+    final caps = await VitalBluetooth().getCapabilities();
+
+    expect(caps.ble, isTrue);
   });
 }

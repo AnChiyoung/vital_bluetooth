@@ -1,29 +1,31 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vital_bluetooth/src/platform/messages.g.dart';
 import 'package:vital_bluetooth/vital_bluetooth.dart';
-import 'package:vital_bluetooth/vital_bluetooth_platform_interface.dart';
-import 'package:vital_bluetooth/vital_bluetooth_method_channel.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-class MockVitalBluetoothPlatform
-    with MockPlatformInterfaceMixin
-    implements VitalBluetoothPlatform {
+class FakeBleHostApi extends BleHostApi {
   @override
-  Future<String?> getPlatformVersion() => Future.value('42');
+  Future<CapabilitiesMessage> getCapabilities() async => CapabilitiesMessage(
+    ble: true,
+    classic: false,
+    bonding: false,
+    connectionPriority: false,
+    phy: false,
+  );
 }
 
 void main() {
-  final VitalBluetoothPlatform initialPlatform =
-      VitalBluetoothPlatform.instance;
+  test('getCapabilities converts the platform answer', () async {
+    final bluetooth = VitalBluetooth.withApi(FakeBleHostApi());
 
-  test('$MethodChannelVitalBluetooth is the default instance', () {
-    expect(initialPlatform, isInstanceOf<MethodChannelVitalBluetooth>());
-  });
-
-  test('getPlatformVersion', () async {
-    VitalBluetooth vitalBluetoothPlugin = VitalBluetooth();
-    MockVitalBluetoothPlatform fakePlatform = MockVitalBluetoothPlatform();
-    VitalBluetoothPlatform.instance = fakePlatform;
-
-    expect(await vitalBluetoothPlugin.getPlatformVersion(), '42');
+    expect(
+      await bluetooth.getCapabilities(),
+      const BluetoothCapabilities(
+        ble: true,
+        classic: false,
+        bonding: false,
+        connectionPriority: false,
+        phy: false,
+      ),
+    );
   });
 }
