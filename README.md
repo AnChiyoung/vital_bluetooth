@@ -38,7 +38,8 @@ negotiates the MTU itself; `requestMtu` returns the current value.
 
 Bluetooth Classic (SPP) is planned.
 
-Minimum versions: Android 7.0 (API 24), iOS 15, macOS 12, Windows 10.
+Minimum versions: Flutter 3.29 (Dart 3.7), Android 7.0 (API 24), iOS 15,
+macOS 12, Windows 10 (version 2004).
 
 ## Installation
 
@@ -49,7 +50,17 @@ dependencies:
 
 ### Android
 
-Nothing to add. The plugin's manifest declares:
+The app's `minSdk` must be 24 or higher. Recent Flutter versions already
+default to 24; if yours uses `flutter.minSdkVersion` and the build reports
+a lower value, set it in `android/app/build.gradle(.kts)`:
+
+```kotlin
+defaultConfig {
+    minSdk = 24
+}
+```
+
+Nothing else to add. The plugin's manifest declares:
 
 - Android 12+: `BLUETOOTH_SCAN` (with `neverForLocation`) and
   `BLUETOOTH_CONNECT`

@@ -1,3 +1,9 @@
+## 0.1.1
+
+* Works with older Flutter: the minimum is now Dart 3.7 / Flutter 3.29
+  (was Dart 3.13).
+* Android: builds in apps that still use Android Gradle Plugin 8.
+
 ## 0.1.0
 
 * First release.
