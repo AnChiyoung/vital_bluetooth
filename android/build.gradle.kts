@@ -25,6 +25,11 @@ plugins {
     id("com.android.library")
 }
 
+// AGP 9 compiles Kotlin itself; apps on AGP 8 need the Kotlin plugin.
+if (com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.substringBefore('.').toInt() < 9) {
+    apply(plugin = "org.jetbrains.kotlin.android")
+}
+
 android {
     namespace = "dev.goodluckcy.vital_bluetooth"
 
@@ -65,15 +70,16 @@ android {
     }
 }
 
-kotlin {
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
 dependencies {
-    // Pigeon generates suspend functions for async host calls.
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    // Pigeon generates suspend functions for async host calls. 1.7.3 is
+    // built with Kotlin 1.8, so apps still on Kotlin 1.8 can compile it.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.mockito:mockito-core:5.0.0")
