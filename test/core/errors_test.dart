@@ -18,16 +18,18 @@ void main() {
         isTrue,
       );
       expect(
-        AdapterUnavailableException(AdapterUnavailableReason.transitioning)
-            .isRetryable,
+        AdapterUnavailableException(
+          AdapterUnavailableReason.transitioning,
+        ).isRetryable,
         isTrue,
       );
     });
 
     test('failures that need user action are not retryable', () {
       expect(
-        AdapterUnavailableException(AdapterUnavailableReason.poweredOff)
-            .isRetryable,
+        AdapterUnavailableException(
+          AdapterUnavailableReason.poweredOff,
+        ).isRetryable,
         isFalse,
       );
       expect(PermissionDeniedException(['x']).isRetryable, isFalse);

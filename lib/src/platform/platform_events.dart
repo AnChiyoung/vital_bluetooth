@@ -4,11 +4,12 @@ import 'package:flutter/services.dart';
 
 import 'messages.g.dart';
 
-typedef ConnectionStateEvent = ({
-  String deviceId,
-  ConnectionStateMessage state,
-  PlatformErrorMessage? error,
-});
+typedef ConnectionStateEvent =
+    ({
+      String deviceId,
+      ConnectionStateMessage state,
+      PlatformErrorMessage? error,
+    });
 
 typedef MtuEvent = ({String deviceId, int mtu});
 
@@ -106,10 +107,8 @@ class BleEvents implements BleFlutterApi {
 
 typedef ClassicDataEvent = ({String deviceId, Uint8List data});
 
-typedef ClassicDisconnectEvent = ({
-  String deviceId,
-  PlatformErrorMessage? error,
-});
+typedef ClassicDisconnectEvent =
+    ({String deviceId, PlatformErrorMessage? error});
 
 /// Receives the Classic (RFCOMM) events the platform sends.
 class ClassicEvents implements ClassicFlutterApi {

@@ -31,8 +31,8 @@ class BluetoothDevice {
     this._events, {
     required this.options,
     required bool autoConnect,
-    required this._onDispose,
-  }) {
+    required void Function(BluetoothDevice) onDispose,
+  }) : _onDispose = onDispose {
     _driver = BleConnectionDriver(id, _api, _events, autoConnect: autoConnect);
     _connection = DeviceConnection(id, _driver, options: options);
     _connection.state.addListener(_onConnectionChanged);

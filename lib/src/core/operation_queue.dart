@@ -65,7 +65,8 @@ class OperationQueue {
   /// otherwise an [OperationCancelledException]. A result that arrives later
   /// from the platform for the running operation is ignored.
   void cancelAll({bool disconnected = false}) {
-    final entries = [?_running, ..._pending];
+    final running = _running;
+    final entries = [if (running != null) running, ..._pending];
     _pending.clear();
     for (final entry in entries) {
       entry.fail(

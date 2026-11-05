@@ -178,25 +178,31 @@ class _ScanPageState extends State<ScanPage> {
         children: [
           ValueListenableBuilder(
             valueListenable: _bluetooth.adapterState,
-            builder: (context, state, _) => ListTile(
-              leading: Icon(
-                state.isOn ? Icons.bluetooth : Icons.bluetooth_disabled,
-              ),
-              title: Text('Adapter: ${state.name}'),
-              trailing: state == AdapterState.poweredOff
-                  ? TextButton(onPressed: _turnOn, child: const Text('Turn on'))
-                  : null,
-            ),
+            builder:
+                (context, state, _) => ListTile(
+                  leading: Icon(
+                    state.isOn ? Icons.bluetooth : Icons.bluetooth_disabled,
+                  ),
+                  title: Text('Adapter: ${state.name}'),
+                  trailing:
+                      state == AdapterState.poweredOff
+                          ? TextButton(
+                            onPressed: _turnOn,
+                            child: const Text('Turn on'),
+                          )
+                          : null,
+                ),
           ),
           ListTile(
             leading: const Icon(Icons.lock_open),
             title: Text('Permission: ${_permission?.name ?? '...'}'),
-            trailing: _permission == PermissionStatus.granted
-                ? null
-                : TextButton(
-                    onPressed: _requestPermission,
-                    child: const Text('Request'),
-                  ),
+            trailing:
+                _permission == PermissionStatus.granted
+                    ? null
+                    : TextButton(
+                      onPressed: _requestPermission,
+                      child: const Text('Request'),
+                    ),
           ),
           SwitchListTile(
             secondary: const Icon(Icons.nightlight_round),

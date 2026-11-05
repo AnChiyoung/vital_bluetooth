@@ -1,6 +1,6 @@
 name: vital_bluetooth
 description: "Bluetooth LE for wearables and healthcare devices that stays connected in the background: native reconnects, restored notifications, queued GATT and typed errors."
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/AnChiyoung/vital_bluetooth
 issue_tracker: https://github.com/AnChiyoung/vital_bluetooth/issues
 topics:
@@ -11,8 +11,8 @@ topics:
   - healthcare
 
 environment:
-  sdk: ^3.13.0
-  flutter: '>=3.3.0'
+  sdk: ^3.7.0
+  flutter: '>=3.29.0'
 
 dependencies:
   flutter:

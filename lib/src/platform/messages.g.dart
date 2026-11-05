@@ -330,10 +330,10 @@ class ScanResultMessage {
       connectable: result[3]! as bool,
       txPowerLevel: result[4] as int?,
       serviceUuids: (result[5]! as List<Object?>).cast<String>(),
-      manufacturerData: (result[6]! as Map<Object?, Object?>)
-          .cast<int, Uint8List>(),
-      serviceData: (result[7]! as Map<Object?, Object?>)
-          .cast<String, Uint8List>(),
+      manufacturerData:
+          (result[6]! as Map<Object?, Object?>).cast<int, Uint8List>(),
+      serviceData:
+          (result[7]! as Map<Object?, Object?>).cast<String, Uint8List>(),
     );
   }
 
@@ -645,8 +645,8 @@ class ServiceMessage {
       uuid: result[0]! as String,
       instance: result[1]! as int,
       isPrimary: result[2]! as bool,
-      characteristics: (result[3]! as List<Object?>)
-          .cast<CharacteristicMessage>(),
+      characteristics:
+          (result[3]! as List<Object?>).cast<CharacteristicMessage>(),
       includedServices: (result[4]! as List<Object?>).cast<String>(),
     );
   }
@@ -942,8 +942,8 @@ class SessionMessage {
       deviceId: result[0]! as String,
       name: result[1] as String?,
       connected: result[2]! as bool,
-      subscribed: (result[3]! as List<Object?>)
-          .cast<CharacteristicAddressMessage>(),
+      subscribed:
+          (result[3]! as List<Object?>).cast<CharacteristicAddressMessage>(),
     );
   }
 
@@ -1179,9 +1179,8 @@ class BleHostApi {
     BinaryMessenger? binaryMessenger,
     String messageChannelSuffix = '',
   }) : pigeonVar_binaryMessenger = binaryMessenger,
-       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
-           ? '.$messageChannelSuffix'
-           : '';
+       pigeonVar_messageChannelSuffix =
+           messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
 
   final BinaryMessenger? pigeonVar_binaryMessenger;
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -1873,9 +1872,8 @@ abstract class BleFlutterApi {
     BinaryMessenger? binaryMessenger,
     String messageChannelSuffix = '',
   }) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty
-        ? '.$messageChannelSuffix'
-        : '';
+    messageChannelSuffix =
+        messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.vital_bluetooth.BleFlutterApi.onAdapterStateChanged$messageChannelSuffix',
@@ -2096,9 +2094,8 @@ class ClassicHostApi {
     BinaryMessenger? binaryMessenger,
     String messageChannelSuffix = '',
   }) : pigeonVar_binaryMessenger = binaryMessenger,
-       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
-           ? '.$messageChannelSuffix'
-           : '';
+       pigeonVar_messageChannelSuffix =
+           messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
 
   final BinaryMessenger? pigeonVar_binaryMessenger;
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -2243,9 +2240,8 @@ abstract class ClassicFlutterApi {
     BinaryMessenger? binaryMessenger,
     String messageChannelSuffix = '',
   }) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty
-        ? '.$messageChannelSuffix'
-        : '';
+    messageChannelSuffix =
+        messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
         'dev.flutter.pigeon.vital_bluetooth.ClassicFlutterApi.onDeviceDiscovered$messageChannelSuffix',

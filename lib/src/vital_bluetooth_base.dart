@@ -278,16 +278,17 @@ class VitalBluetooth {
     String id, {
     ConnectionOptions? options,
     bool autoConnect = false,
-  }) => _devices[id] ??= BluetoothDevice.internal(
-    id,
-    _api,
-    _events,
-    options: options ?? defaultOptions,
-    autoConnect: autoConnect,
-    onDispose: (d) {
-      if (identical(_devices[d.id], d)) _devices.remove(d.id);
-    },
-  );
+  }) =>
+      _devices[id] ??= BluetoothDevice.internal(
+        id,
+        _api,
+        _events,
+        options: options ?? defaultOptions,
+        autoConnect: autoConnect,
+        onDispose: (d) {
+          if (identical(_devices[d.id], d)) _devices.remove(d.id);
+        },
+      );
 
   /// Devices the system is already connected to, for example by another
   /// app. They still need [BluetoothDevice.connect] before use here.

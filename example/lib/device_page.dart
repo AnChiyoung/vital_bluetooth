@@ -40,70 +40,74 @@ class _DevicePageState extends State<DevicePage> {
       appBar: AppBar(
         title: ValueListenableBuilder(
           valueListenable: _device.name,
-          builder: (context, name, _) =>
-              Text(name ?? widget.name ?? _device.id),
+          builder:
+              (context, name, _) => Text(name ?? widget.name ?? _device.id),
         ),
       ),
       body: ValueListenableBuilder(
         valueListenable: _device.connectionState,
-        builder: (context, state, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              title: Text('State: ${state.status.name}'),
-              subtitle: state.error == null
-                  ? null
-                  : Text(state.error.toString(), maxLines: 3),
-              trailing: _ConnectButton(
-                device: _device,
-                state: state,
-                onTry: _try,
-              ),
-            ),
-            if (state.isReady)
-              Wrap(
-                spacing: 8,
-                children: [
-                  OutlinedButton(
-                    onPressed: () => _try('MTU', () => _device.requestMtu(247)),
-                    child: const Text('MTU 247'),
+        builder:
+            (context, state, _) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ListTile(
+                  title: Text('State: ${state.status.name}'),
+                  subtitle:
+                      state.error == null
+                          ? null
+                          : Text(state.error.toString(), maxLines: 3),
+                  trailing: _ConnectButton(
+                    device: _device,
+                    state: state,
+                    onTry: _try,
                   ),
-                  OutlinedButton(
-                    onPressed: () => _try('RSSI', _device.readRssi),
-                    child: const Text('RSSI'),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => _try('Bond', _device.createBond),
-                    child: const Text('Bond'),
-                  ),
-                ],
-              ),
-            if (_message != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(_message!),
-              ),
-            const Divider(),
-            Expanded(
-              child: ValueListenableBuilder(
-                valueListenable: _device.services,
-                builder: (context, services, _) => ListView(
-                  children: [
-                    for (final service in services)
-                      ExpansionTile(
-                        title: Text(_shortUuid(service.uuid)),
-                        subtitle: Text(service.uuid),
-                        children: [
-                          for (final c in service.characteristics)
-                            _CharacteristicTile(c, onTry: _try),
-                        ],
-                      ),
-                  ],
                 ),
-              ),
+                if (state.isReady)
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton(
+                        onPressed:
+                            () => _try('MTU', () => _device.requestMtu(247)),
+                        child: const Text('MTU 247'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => _try('RSSI', _device.readRssi),
+                        child: const Text('RSSI'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => _try('Bond', _device.createBond),
+                        child: const Text('Bond'),
+                      ),
+                    ],
+                  ),
+                if (_message != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(_message!),
+                  ),
+                const Divider(),
+                Expanded(
+                  child: ValueListenableBuilder(
+                    valueListenable: _device.services,
+                    builder:
+                        (context, services, _) => ListView(
+                          children: [
+                            for (final service in services)
+                              ExpansionTile(
+                                title: Text(_shortUuid(service.uuid)),
+                                subtitle: Text(service.uuid),
+                                children: [
+                                  for (final c in service.characteristics)
+                                    _CharacteristicTile(c, onTry: _try),
+                                ],
+                              ),
+                          ],
+                        ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
       ),
     );
   }
@@ -124,9 +128,11 @@ class _ConnectButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final idle = state.status == DeviceConnectionStatus.disconnected;
     return FilledButton(
-      onPressed: () => idle
-          ? onTry('Connect', device.connect)
-          : onTry('Disconnect', device.disconnect),
+      onPressed:
+          () =>
+              idle
+                  ? onTry('Connect', device.connect)
+                  : onTry('Disconnect', device.disconnect),
       child: Text(idle ? 'Connect' : 'Disconnect'),
     );
   }
@@ -184,15 +190,16 @@ class _CharacteristicTileState extends State<_CharacteristicTile> {
   Future<void> _write() async {
     final text = await showDialog<String>(
       context: context,
-      builder: (context) =>
-          _HexDialog(title: 'Write to ${_shortUuid(_c.uuid)}'),
+      builder:
+          (context) => _HexDialog(title: 'Write to ${_shortUuid(_c.uuid)}'),
     );
     if (text == null) return;
     final bytes = _parseHex(text);
     if (bytes == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Not hex: $text')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Not hex: $text')));
       }
       return;
     }
@@ -220,8 +227,8 @@ class _CharacteristicTileState extends State<_CharacteristicTile> {
             IconButton(
               tooltip: 'Read',
               icon: const Icon(Icons.download),
-              onPressed: () =>
-                  widget.onTry('Read', () async => _hex(await _c.read())),
+              onPressed:
+                  () => widget.onTry('Read', () async => _hex(await _c.read())),
             ),
           if (p.write || p.writeWithoutResponse)
             IconButton(
@@ -304,5 +311,5 @@ List<int>? _parseHex(String text) {
 /// Shows "0x180d" for UUIDs on the Bluetooth base UUID.
 String _shortUuid(String uuid) =>
     uuid.endsWith('-0000-1000-8000-00805f9b34fb') && uuid.startsWith('0000')
-    ? '0x${uuid.substring(4, 8)}'
-    : uuid;
+        ? '0x${uuid.substring(4, 8)}'
+        : uuid;
