@@ -49,6 +49,35 @@ jobs:
         working-directory: example
         run: flutter build apk --debug
 
+  # The oldest supported Flutter, in a freshly created app as users have it
+  # (Android Gradle Plugin 8, Kotlin 1.8). Keep in step with pubspec.yaml.
+  build-android-minimum:
+    name: Build Android (Flutter 3.29)
+    needs: analyze-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: vital_bluetooth
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          channel: stable
+          cache: true
+      - name: Create an app that uses the plugin
+        run: |
+          flutter create --platforms=android minapp
+          cd minapp
+          flutter pub add vital_bluetooth --path ../vital_bluetooth
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/' android/app/build.gradle*
+      - name: Build
+        working-directory: minapp
+        run: flutter build apk --debug
+
   # iOS and macOS are built twice, once with Swift Package Manager and once
   # with CocoaPods, because users' apps may use either.
   build-darwin:
